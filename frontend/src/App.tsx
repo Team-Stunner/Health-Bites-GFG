@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Auth0Provider } from '@auth0/auth0-react';
+import { Auth0Provider, useAuth0 } from '@auth0/auth0-react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { SupportBot } from './components/SupportBot';
@@ -11,15 +11,19 @@ import { Exercise } from './pages/Exercise';
 import { Recipes } from './pages/Recipes';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { FoodRecognitionNew } from './pages/FoodRecognitionNew';
-import { useAuth0 } from '@auth0/auth0-react';
+
+import { DietProvider } from './Context/Calary';
 
 // Wrapper component to handle home page redirection
 const HomeWrapper = () => {
+
+  
   const { isAuthenticated } = useAuth0();
   return isAuthenticated ? <Navigate to="/food-recognition" replace /> : <Home />;
 };
 
 function App() {
+
   return (
     <Auth0Provider
       domain="dev-3saa5w2monm3q0wf.us.auth0.com"
@@ -28,10 +32,11 @@ function App() {
         redirect_uri: window.location.origin
       }}
     >
-      <Router>
+<Router>
         <div className="min-h-screen flex flex-col">
           <Header />
           <main className="flex-grow">
+          <DietProvider>  
             <Routes>
               <Route path="/" element={<HomeWrapper />} />
               {/* <Route path="/home" element={<UserHome />} /> */}
@@ -62,6 +67,7 @@ function App() {
                 </ProtectedRoute>
               } />
             </Routes>
+            </DietProvider>
           </main>
           <Footer />
           <SupportBot />

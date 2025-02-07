@@ -17,7 +17,7 @@ const commonQuestions = [
 
 const getResponse = (question: string): string => {
     const responses: { [key: string]: string } = {
-        "How do I track my meals?": "To track your meals, go to the Tracking page and use the 'Daily Food Tracker' section. You can add food items and their calories, or use our food recognition feature for automatic tracking.",
+        "How do I track my meals?": "To track your meals, go to the Tracking page and use the 's Tracker' section. You can add food items and their calories, or use our food recognition feature for automatic tracking.",
         "How to create a meal plan?": "Visit the Meal Planning page where you can generate weekly meal plans, get recipe recommendations, and create grocery lists based on your preferences and dietary requirements.",
         "Where can I find my progress?": "Your progress is visible on the Tracking page. You'll find daily progress charts, nutrition goals, and water intake tracking to help you stay on top of your health journey.",
         "How to use food recognition?": "Navigate to the Food Recognition page, click the upload button to take or select a photo of your food. Our AI will analyze the image and provide nutritional information that you can add to your daily log."

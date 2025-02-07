@@ -4,6 +4,8 @@ import { Camera, Image as ImageIcon, Check, Loader2, Upload } from 'lucide-react
 import { useFood } from '../hooks/useFood';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { useDiet } from '../Context/Calary';
+import { set } from 'date-fns';
 
 interface RecognizedFood {
     name: string;
@@ -16,13 +18,23 @@ interface RecognizedFood {
     };
 }
 
+interface FoodEntry {
+    name: string;
+    calories: number;
+    id: string;
+}
 export const FoodRecognitionNew: React.FC = () => {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [recognizedFood, setRecognizedFood] = useState<RecognizedFood | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [foodName, setFoodName] = useState('');
+    const [calories, setCalories] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [analysisResult, setAnalysisResult] = useState<string | null>(null);
     const { addFoodItem } = useFood();
+    const backendurl = import.meta.env.VITE_BACKEND_URL;
+
+    const { todayCalories, setTodayCalories, foodEntries, setFoodEntries } = useDiet();
 
     const compressImage = async (file: File): Promise<Blob> => {
         return new Promise((resolve, reject) => {
@@ -89,8 +101,12 @@ export const FoodRecognitionNew: React.FC = () => {
                 maxContentLength: Infinity,
                 maxBodyLength: Infinity,
             });
-
-            setAnalysisResult(response.data.calorie_info);
+            console.log(response.data.raw_analysis)
+            setAnalysisResult(response.data.raw_analysis);
+            if (response.data.dish_name && response.data.total_calories) {
+                setFoodName(response.data.dish_name);
+                setCalories(response.data.total_calories);
+            }
         } catch (err) {
             console.error('Error analyzing image:', err);
             setError('Failed to analyze image. Please try again with a smaller image.');
@@ -125,7 +141,41 @@ export const FoodRecognitionNew: React.FC = () => {
             setError('Please select an image first');
         }
     };
+    const handlesubmit = async (e: React.FormEvent) => {
+        if (foodName && calories) {
+            const caloriesNum = parseInt(calories);
+console.log(1)
+            const newEntry: FoodEntry = {
+                name: foodName,
+                calories: caloriesNum,
+                id: Date.now().toString()
+            };
 
+
+
+            try {
+                const userid = localStorage.getItem('userid') || '';
+                const response = await axios.post(`${backendurl}/meal/add-food`, {
+                    userid,
+                    foodName,
+                    calories: caloriesNum,
+                    mealTime: new Date().toISOString() // You can make this dynamic
+                });
+                if (response.data.dailyMealPlan.totalCalories) {
+                    setTodayCalories(response.data.dailyMealPlan.totalCalories);
+                    setFoodEntries([...foodEntries, ...response.data.dailyMealPlan.meals]);
+                    console.log(response.data.dailyMealPlan.meals)
+
+                }
+
+
+                setFoodName('');
+                setCalories('');
+            } catch (error) {
+                console.error("Error adding food:", error);
+            }
+        }
+    }
     return (
         <div className="bg-white rounded-lg shadow-md p-8 min-h-[800px]">
             <h2 className="text-3xl font-bold mb-8 flex items-center text-gray-800">
@@ -146,8 +196,9 @@ export const FoodRecognitionNew: React.FC = () => {
                                 type="file"
                                 className="hidden"
                                 accept="image/*"
-                                onChange={handleImageSelect}
-                                id="image-input"
+                                onChange={(e) => {
+                                    handleImageSelect(e);
+                                }} id="image-input"
                                 disabled={isLoading}
                             />
                             <motion.label
@@ -188,29 +239,24 @@ export const FoodRecognitionNew: React.FC = () => {
                             </motion.label>
                         </div>
 
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={handleAnalyzeClick}
-                            disabled={!selectedImage || isLoading}
-                            className={`mt-6 w-full py-4 px-6 rounded-xl text-white font-medium flex items-center justify-center gap-3 transition-colors ${!selectedImage || isLoading
-                                    ? 'bg-gray-400 cursor-not-allowed'
-                                    : 'bg-green-600 hover:bg-green-700'
-                                }`}
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                    Analyzing your food...
-                                </>
-                            ) : (
-                                <>
-                                    <Camera className="h-5 w-5" />
-                                    Analyze Food Image
-                                </>
-                            )}
-                        </motion.button>
-                    </div>
+                        <motion.button onClick={handleAnalyzeClick} disabled={!selectedImage || isLoading} className="mt-6 w-full py-4 px-6 rounded-xl text-white font-medium bg-green-600 hover:bg-green-700">
+                        {isLoading ? (
+                            <>
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                Analyzing...
+                            </>
+                        ) : (
+                            <>
+                                <Camera className="h-5 w-5" />
+                                Analyze Food Image
+                            </>
+                        )}
+                    </motion.button>
+
+                    <motion.button onClick={handlesubmit} disabled={!foodName || !calories} className="mt-4 w-full py-4 px-6 rounded-xl text-white font-medium bg-blue-600 hover:bg-blue-700">
+                        Add Food Entry
+                    </motion.button>
+                </div>
 
                     {error && (
                         <motion.div
