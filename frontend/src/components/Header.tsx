@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { Link, useLocation } from 'react-router-dom';
+import axios from 'axios';
 import {
   Menu,
   User,
@@ -16,7 +17,8 @@ import {
   Dumbbell,
   ClipboardList,
   ScrollText,
-  Cookie
+  Cookie,
+  BadgeX
 } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -54,6 +56,8 @@ const navDropdowns: NavDropdownProps[] = [
 ];
 
 export const Header: React.FC = () => {
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDietProfile, setShowDietProfile] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -90,22 +94,34 @@ export const Header: React.FC = () => {
     setShowDropdown(false);
     setShowDietProfile(true);
   };
-
+  useEffect(() => {
+    if (isAuthenticated && user) {
+        const saveProfile = async () => {
+            try {
+              const response=  await axios.post(`${backendUrl}/user/profile`, {
+                    name: user.name,
+                    email: user.email
+                });
+                console.log(response.data._id)
+                localStorage.setItem('userid', JSON.stringify(response.data._id));
+            } catch (error) {
+                console.error("Error saving profile", error);
+            }
+        };
+        
+        saveProfile();
+    }
+}, [ user]);
+console.log(user?.sub);
   const handleSaveDietProfile = (data: DietProfileData) => {
     if (user) {
-      localStorage.setItem(`dietProfile_${user.sub}`, JSON.stringify(data));
-      setShowDietProfile(false);
+     //profile update api call
     }
   };
 
     
   const getCurrentDietProfile = (): DietProfileData | undefined => {
-    if (user) {
-      const profileData = localStorage.getItem(`dietProfile_${user.sub}`);
-      if (profileData) {
-        return JSON.parse(profileData);
-      }
-    }
+    // Get user's diet profile from the backend
     return undefined;
   };
 
@@ -344,7 +360,6 @@ export const Header: React.FC = () => {
           <DietProfile
             onClose={() => setShowDietProfile(false)}
             onSave={handleSaveDietProfile}
-            initialData={getCurrentDietProfile()}
           />
         )}
       </AnimatePresence>
