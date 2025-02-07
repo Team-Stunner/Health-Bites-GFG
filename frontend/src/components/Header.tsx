@@ -1,40 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, User, Home, Activity, Utensils, Book, Camera, X, LogOut, Settings } from 'lucide-react';
+import {
+  Menu,
+  User,
+  Home,
+  Activity,
+  Utensils,
+  Book,
+  Camera,
+  X,
+  LogOut,
+  Settings,
+  ChevronDown,
+  Dumbbell,
+  ClipboardList,
+  ScrollText,
+  Cookie
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DietProfile, DietProfileData } from './DietProfile';
 
-const navItems = [
-  { label: 'Home', icon: <Home size={20} />, href: '/' },
-  { label: 'Track', icon: <Activity size={20} />, href: '/tracking', requiresAuth: true },
-  { label: 'Meal Plan', icon: <Utensils size={20} />, href: '/meal-planning', requiresAuth: true },
-  { label: 'Exercise', icon: <Book size={20} />, href: '/exercise', requiresAuth: true },
-  { label: 'Food Recognition', icon: <Camera size={20} />, href: '/food-recognition', requiresAuth: true },
+interface NavDropdownProps {
+  label: string;
+  icon: React.ReactNode;
+  items: {
+    label: string;
+    icon: React.ReactNode;
+    href: string;
+  }[];
+}
+
+const navDropdowns: NavDropdownProps[] = [
+  {
+    label: 'Track & Exercise',
+    icon: <Activity size={20} />,
+    items: [
+      { label: 'Daily Tracking', icon: <ClipboardList size={18} />, href: '/tracking' },
+      { label: 'Exercise Log', icon: <Dumbbell size={18} />, href: '/exercise' },
+      { label: 'Food Recognition', icon: <Camera size={18} />, href: '/food-recognition' },
+    ]
+  },
+  {
+    label: 'Meal & Recipes',
+    icon: <Utensils size={20} />,
+    items: [
+      { label: 'Meal Planning', icon: <ScrollText size={18} />, href: '/meal-planning' },
+      { label: 'Recipe Library', icon: <Cookie size={18} />, href: '/recipes' }
+    ]
+  }
 ];
 
 export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDietProfile, setShowDietProfile] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const navDropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const location = useLocation();
   const { isAuthenticated, loginWithRedirect, logout, user } = useAuth0();
 
-  const handleLogin = () => {
-    loginWithRedirect();
-  };
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+
+      // Close nav dropdowns when clicking outside
+      if (!Object.values(navDropdownRefs.current).some(ref => ref?.contains(event.target as Node))) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogin = () => loginWithRedirect();
 
   const handleLogout = () => {
+    setShowDropdown(false);
     logout({ logoutParams: { returnTo: window.location.origin } });
   };
 
-  const handleNavClick = (e: React.MouseEvent, requiresAuth: boolean) => {
-    if (requiresAuth && !isAuthenticated) {
-      e.preventDefault();
-      handleLogin();
-    }
-  };
-
   const handleOpenDietProfile = () => {
+    setShowDropdown(false);
     setShowDietProfile(true);
   };
 
@@ -45,6 +96,7 @@ export const Header: React.FC = () => {
     }
   };
 
+    
   const getCurrentDietProfile = (): DietProfileData | undefined => {
     if (user) {
       const profileData = localStorage.getItem(`dietProfile_${user.sub}`);
@@ -55,26 +107,113 @@ export const Header: React.FC = () => {
     return undefined;
   };
 
-  const NavLink = ({ item }: { item: typeof navItems[0] }) => {
-    const Component = item.requiresAuth && !isAuthenticated ? 'div' : Link;
+  const NavDropdown: React.FC<NavDropdownProps & { index: number }> = ({ label, icon, items, index }) => {
+    const isActive = activeDropdown === label;
 
     return (
-      <Component
-        to={item.href}
-        onClick={(e) => handleNavClick(e, item.requiresAuth || false)}
-        className={`flex items-center space-x-2 transition-colors ${location.pathname === item.href
-          ? 'text-white font-semibold'
-          : 'text-green-100 hover:text-white'
-          } ${item.requiresAuth && !isAuthenticated ? 'cursor-pointer opacity-75 hover:opacity-100' : ''}`}
+      <div
+        className="relative"
+        ref={el => navDropdownRefs.current[label] = el}
       >
-        {item.icon}
-        <span>{item.label}</span>
-        {item.requiresAuth && !isAuthenticated && (
-          <span className="text-xs ml-1"></span>
-        )}
-      </Component>
+        <motion.button
+          whileHover={{ y: -2 }}
+          whileTap={{ y: 0 }}
+          onClick={() => setActiveDropdown(isActive ? null : label)}
+          className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${items.some(item => location.pathname === item.href)
+              ? 'text-white font-semibold'
+              : 'text-green-100 hover:text-white'
+            }`}
+        >
+          {icon}
+          <span>{label}</span>
+          <ChevronDown
+            size={16}
+            className={`transition-transform duration-200 ${isActive ? 'rotate-180' : ''}`}
+          />
+        </motion.button>
+
+        <AnimatePresence>
+          {isActive && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50"
+            >
+              {items.map((item, itemIndex) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={`flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-green-50 transition-colors ${location.pathname === item.href ? 'bg-green-50 text-green-600 font-medium' : ''
+                    }`}
+                  onClick={() => setActiveDropdown(null)}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     );
   };
+
+  const UserDropdown = () => (
+    <div className="relative" ref={dropdownRef}>
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setShowDropdown(!showDropdown)}
+        className="flex items-center space-x-2 hover:bg-green-700 px-3 py-2 rounded-lg transition-colors"
+      >
+        {user?.picture ? (
+          <img
+            src={user.picture}
+            alt={user.name || 'User avatar'}
+            className="w-8 h-8 rounded-full border-2 border-white"
+          />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-green-700 flex items-center justify-center">
+            <User size={16} />
+          </div>
+        )}
+        <span className="hidden md:inline font-medium">{user?.given_name}</span>
+        <ChevronDown
+          size={16}
+          className={`transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`}
+        />
+      </motion.button>
+
+      <AnimatePresence>
+        {showDropdown && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50"
+          >
+            <button
+              onClick={handleOpenDietProfile}
+              className="w-full flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-green-50 transition-colors"
+            >
+              <Settings size={18} />
+              <span>Diet Profile</span>
+            </button>
+            <div className="border-t my-1"></div>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center space-x-2 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <LogOut size={18} />
+              <span>Logout</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 
   return (
     <>
@@ -106,62 +245,29 @@ export const Header: React.FC = () => {
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center space-x-8">
-              {navItems.map((item) => (
-                <motion.div
-                  key={item.label}
-                  whileHover={{ y: -2 }}
-                  whileTap={{ y: 0 }}
+            <nav className="hidden lg:flex items-center space-x-6">
+              <motion.div
+                whileHover={{ y: -2 }}
+                whileTap={{ y: 0 }}
+              >
+                <Link
+                  to="/"
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${location.pathname === '/' ? 'text-white font-semibold' : 'text-green-100 hover:text-white'
+                    }`}
                 >
-                  <NavLink item={item} />
-                </motion.div>
+                  <Home size={20} />
+                  <span>Home</span>
+                </Link>
+              </motion.div>
+
+              {isAuthenticated && navDropdowns.map((dropdown, index) => (
+                <NavDropdown key={dropdown.label} {...dropdown} index={index} />
               ))}
             </nav>
 
             <div className="flex items-center space-x-4">
               {isAuthenticated ? (
-                <motion.div
-                  className="flex items-center space-x-4"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                >
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleOpenDietProfile}
-                    className="flex items-center space-x-2 hover:bg-green-700 px-3 py-1 rounded-lg transition-colors"
-                  >
-                    <Settings size={20} />
-                    <span className="hidden md:inline">Diet Profile</span>
-                  </motion.button>
-
-                  <motion.div
-                    className="flex items-center space-x-2"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    {user?.picture ? (
-                      <img
-                        src={user.picture}
-                        alt={user.name || 'User avatar'}
-                        className="w-8 h-8 rounded-full border-2 border-white"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-green-700 flex items-center justify-center">
-                        <User size={16} />
-                      </div>
-                    )}
-                    <span className="hidden md:inline font-medium">{user?.name}</span>
-                  </motion.div>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleLogout}
-                    className="flex items-center space-x-2 hover:bg-green-700 px-3 py-1 rounded-lg transition-colors"
-                  >
-                    <LogOut size={20} />
-                    <span className="hidden md:inline">Logout</span>
-                  </motion.button>
-                </motion.div>
+                <UserDropdown />
               ) : (
                 <motion.div
                   className="flex items-center space-x-4"
@@ -193,16 +299,36 @@ export const Header: React.FC = () => {
               transition={{ duration: 0.2 }}
               className="lg:hidden bg-green-700"
             >
-              <nav className="container mx-auto px-4 py-4">
-                {navItems.map((item, index) => (
-                  <motion.div
-                    key={item.label}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <NavLink item={item} />
-                  </motion.div>
+              <nav className="container mx-auto px-4 py-4 space-y-4">
+                <Link
+                  to="/"
+                  className="flex items-center space-x-2 text-green-100 hover:text-white transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Home size={20} />
+                  <span>Home</span>
+                </Link>
+
+                {isAuthenticated && navDropdowns.map((dropdown, index) => (
+                  <div key={dropdown.label} className="space-y-2">
+                    <div className="flex items-center space-x-2 text-white font-medium">
+                      {dropdown.icon}
+                      <span>{dropdown.label}</span>
+                    </div>
+                    <div className="pl-6 space-y-2">
+                      {dropdown.items.map((item) => (
+                        <Link
+                          key={item.href}
+                          to={item.href}
+                          className="flex items-center space-x-2 text-green-100 hover:text-white transition-colors"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          {item.icon}
+                          <span>{item.label}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </nav>
             </motion.div>

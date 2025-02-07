@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MealPlanner } from '../components/MealPlanner';
-import { RecipeRecommendations } from '../components/RecipeRecommendations';
 import { GroceryList } from '../components/GroceryList';
 import { MealSuggestions } from '../components/MealSuggestions';
 
@@ -38,15 +37,6 @@ export const MealPlanning: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="mt-8"
-      >
-        <RecipeRecommendations />
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
         className="mt-8"
       >
         <MealSuggestions />

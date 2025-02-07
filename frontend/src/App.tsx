@@ -8,6 +8,7 @@ import { Home } from './pages/Home';
 import { Tracking } from './pages/Tracking';
 import { MealPlanning } from './pages/MealPlanning';
 import { Exercise } from './pages/Exercise';
+import { Recipes } from './pages/Recipes';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { FoodRecognitionNew } from './pages/FoodRecognitionNew';
 
@@ -44,6 +45,11 @@ function App() {
               <Route path="/food-recognition" element={
                 <ProtectedRoute>
                   <FoodRecognitionNew />
+                </ProtectedRoute>
+              } />
+              <Route path="/recipes" element={
+                <ProtectedRoute>
+                  <Recipes />
                 </ProtectedRoute>
               } />
             </Routes>
