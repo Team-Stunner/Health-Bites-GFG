@@ -15,7 +15,7 @@ export const Tracking: React.FC = () => {
       >
         Track Your Progress
       </motion.h1>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
@@ -24,7 +24,7 @@ export const Tracking: React.FC = () => {
         >
           <DailyTracker />
         </motion.div>
-        
+
         <div className="space-y-6">
           <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -33,7 +33,7 @@ export const Tracking: React.FC = () => {
           >
             <DailyProgress />
           </motion.div>
-          
+
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -41,7 +41,7 @@ export const Tracking: React.FC = () => {
           >
             <NutritionGoals />
           </motion.div>
-          
+
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FoodRecognitionNew as FoodRecognitionComponent } from '../components/FoodRecognitionNew';
-import { DailyTracker } from '../components/DailyTracker';
+import { SimpleFoodTracker } from '../components/SimpleFoodTracker';
 
 export const FoodRecognitionNew: React.FC = () => {
     return (
@@ -28,7 +28,7 @@ export const FoodRecognitionNew: React.FC = () => {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <DailyTracker />
+                    <SimpleFoodTracker />
                 </motion.div>
             </div>
         </div>

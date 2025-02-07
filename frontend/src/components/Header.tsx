@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { Link, useLocation } from 'react-router-dom';
@@ -7,7 +8,6 @@ import {
   Home,
   Activity,
   Utensils,
-  Book,
   Camera,
   X,
   LogOut,
@@ -18,6 +18,7 @@ import {
   ScrollText,
   Cookie
 } from 'lucide-react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { DietProfile, DietProfileData } from './DietProfile';
 
@@ -33,12 +34,12 @@ interface NavDropdownProps {
 
 const navDropdowns: NavDropdownProps[] = [
   {
-    label: 'Track & Exercise',
+    label: 'User Dashboard',
     icon: <Activity size={20} />,
     items: [
       { label: 'Daily Tracking', icon: <ClipboardList size={18} />, href: '/tracking' },
       { label: 'Exercise Log', icon: <Dumbbell size={18} />, href: '/exercise' },
-      { label: 'Food Recognition', icon: <Camera size={18} />, href: '/food-recognition' },
+     
     ]
   },
   {
@@ -46,7 +47,8 @@ const navDropdowns: NavDropdownProps[] = [
     icon: <Utensils size={20} />,
     items: [
       { label: 'Meal Planning', icon: <ScrollText size={18} />, href: '/meal-planning' },
-      { label: 'Recipe Library', icon: <Cookie size={18} />, href: '/recipes' }
+      { label: 'Recipe Library', icon: <Cookie size={18} />, href: '/recipes' },
+      // { label: 'Food Recognition', icon: <Camera size={18} />, href: '/food-recognition' },
     ]
   }
 ];

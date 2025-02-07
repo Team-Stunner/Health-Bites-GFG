@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Auth0Provider } from '@auth0/auth0-react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -11,6 +11,13 @@ import { Exercise } from './pages/Exercise';
 import { Recipes } from './pages/Recipes';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { FoodRecognitionNew } from './pages/FoodRecognitionNew';
+import { useAuth0 } from '@auth0/auth0-react';
+
+// Wrapper component to handle home page redirection
+const HomeWrapper = () => {
+  const { isAuthenticated } = useAuth0();
+  return isAuthenticated ? <Navigate to="/food-recognition" replace /> : <Home />;
+};
 
 function App() {
   return (
@@ -26,7 +33,9 @@ function App() {
           <Header />
           <main className="flex-grow">
             <Routes>
-              <Route path="/" element={<Home />} />
+              <Route path="/" element={<HomeWrapper />} />
+              {/* <Route path="/home" element={<UserHome />} /> */}
+
               <Route path="/tracking" element={
                 <ProtectedRoute>
                   <Tracking />

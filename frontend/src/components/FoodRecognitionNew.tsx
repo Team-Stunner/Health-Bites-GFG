@@ -77,7 +77,7 @@ export const FoodRecognitionNew: React.FC = () => {
         setError(null);
 
         try {
-            const compressedImage = await compressImage(file);
+            // const compressedImage = await compressImage(file);
             const formData = new FormData();
             formData.append('image', file);
 

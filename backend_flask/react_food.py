@@ -54,25 +54,29 @@ def analyze():
                 "error": "Failed to process image"
             }), 500
 
-        prompt = """
-        You are a nutrition expert. Analyze the food items in this image and provide:
-        1. A detailed list of identified food items
-        2. Estimated calories for each item
-        3. Total calories
-        4. Basic nutritional breakdown (protein, carbs, fat) if possible
-        
-        Format your response like this:
-        Food Items:
-        1. [Item Name] - [Calories] calories
-        2. [Item Name] - [Calories] calories
-        
-        Total Calories: [Sum]
-        
-        Estimated Nutrients:
-        - Protein: [X]g
-        - Carbs: [X]g
-        - Fat: [X]g
-        """
+        prompt = input_prompt = """
+Analyze this food image and provide:
+1. Identify the overall dish name (e.g., "Burger", "Veg Pizza", "Chicken Curry").
+2. List of identified food ingredients with quantity estimates and calorie counts.
+3. Total calorie range.
+
+STRICT RESPONSE FORMAT:
+Dish Name: [Overall Dish Name]
+1. [Food Item] - [Quantity] - [Calories]
+2. [Food Item] - [Quantity] - [Calories]
+...
+Total Calories: Total X
+
+RULES:
+- Identify food with specific names (e.g., "Veg Pizza", "Schezwan Noodles")
+- Estimate quantity in grams or common units (e.g., "1 slice", "200g")
+- Calories must be whole numbers per item
+- Sort items by calorie contribution (highest first)
+- Include cooking fats/oils as separate items
+- Maximum 8 food items
+- Never mention uncertainty or analysis methods
+- No additional text outside the format
+"""
 
         response_text = get_gemini_response(prompt, image_data)
         
