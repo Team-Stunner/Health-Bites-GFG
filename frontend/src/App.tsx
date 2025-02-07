@@ -8,7 +8,6 @@ import { Home } from './pages/Home';
 import { Tracking } from './pages/Tracking';
 import { MealPlanning } from './pages/MealPlanning';
 import { Exercise } from './pages/Exercise';
-// import { FoodRecognition } from './pages/FoodRecognition';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { FoodRecognitionNew } from './pages/FoodRecognitionNew';
 
