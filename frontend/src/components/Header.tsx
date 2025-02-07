@@ -173,7 +173,7 @@ export const Header: React.FC = () => {
         {user?.picture ? (
           <img
             src={user.picture}
-            alt={user.name || 'User avatar'}
+            alt={user.given_name || 'User avatar'}
             className="w-8 h-8 rounded-full border-2 border-white"
           />
         ) : (
