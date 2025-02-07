@@ -1,0 +1,60 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Auth0Provider } from '@auth0/auth0-react';
+import { Header } from './components/Header';
+import { Footer } from './components/Footer';
+import { SupportBot } from './components/SupportBot';
+import { Home } from './pages/Home';
+import { Tracking } from './pages/Tracking';
+import { MealPlanning } from './pages/MealPlanning';
+import { Exercise } from './pages/Exercise';
+// import { FoodRecognition } from './pages/FoodRecognition';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { FoodRecognitionNew } from './pages/FoodRecognitionNew';
+
+function App() {
+  return (
+    <Auth0Provider
+      domain="dev-3saa5w2monm3q0wf.us.auth0.com"
+      clientId="KWfBmQUat9NjJUfkUEzjtyxcBfJ9eHxx"
+      authorizationParams={{
+        redirect_uri: window.location.origin
+      }}
+    >
+      <Router>
+        <div className="min-h-screen flex flex-col">
+          <Header />
+          <main className="flex-grow">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/tracking" element={
+                <ProtectedRoute>
+                  <Tracking />
+                </ProtectedRoute>
+              } />
+              <Route path="/meal-planning" element={
+                <ProtectedRoute>
+                  <MealPlanning />
+                </ProtectedRoute>
+              } />
+              <Route path="/exercise" element={
+                <ProtectedRoute>
+                  <Exercise />
+                </ProtectedRoute>
+              } />
+              <Route path="/food-recognition" element={
+                <ProtectedRoute>
+                  <FoodRecognitionNew />
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </main>
+          <Footer />
+          <SupportBot />
+        </div>
+      </Router>
+    </Auth0Provider>
+  );
+}
+
+export default App;
