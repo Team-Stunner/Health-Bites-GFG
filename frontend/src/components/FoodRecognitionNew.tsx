@@ -91,19 +91,15 @@ export const FoodRecognitionNew: React.FC = () => {
             const formData = new FormData();
             formData.append('image', file);
 
-            const response = await axios.post('http://localhost:5000/analyze', formData, {
+            const response = await axios.post(`${backendurl}/analysis/analyze`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
-                onUploadProgress: (progressEvent: any) => {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    console.log(`Upload Progress: ${percentCompleted}%`);
-                },
             });
 
-            console.log(response.data.raw_analysis);
+            console.log(response.data);
 
-            // Update state in a single call
+            // Update state with the analysis results
             setAnalysisResult(response.data.raw_analysis);
             setFoodName(response.data.dish_name || 'Unknown');
             setCalories(response.data.total_calories || 0);
@@ -115,6 +111,7 @@ export const FoodRecognitionNew: React.FC = () => {
             setIsLoading(false);
         }
     };
+
     const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -141,17 +138,17 @@ export const FoodRecognitionNew: React.FC = () => {
             setError('Please select an image first');
         }
     };
+
     const handlesubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
         if (foodName && calories) {
             const caloriesNum = parseInt(calories);
-            console.log(1)
             const newEntry: FoodEntry = {
                 name: foodName,
                 calories: caloriesNum,
                 id: Date.now().toString()
             };
-
-
 
             try {
                 const userid = localStorage.getItem('userid') || '';
@@ -161,13 +158,11 @@ export const FoodRecognitionNew: React.FC = () => {
                     calories: caloriesNum,
                     mealTime: new Date().toISOString() // You can make this dynamic
                 });
+
                 if (response.data.dailyMealPlan.totalCalories) {
                     setTodayCalories(response.data.dailyMealPlan.totalCalories);
                     setFoodEntries([...foodEntries, ...response.data.dailyMealPlan.meals]);
-                    console.log(response.data.dailyMealPlan.meals)
-
                 }
-
 
                 setFoodName('');
                 setCalories('');
@@ -175,8 +170,8 @@ export const FoodRecognitionNew: React.FC = () => {
                 console.error("Error adding food:", error);
             }
         }
-    }
-    console.log(foodName, calories)
+    };
+
     return (
         <div className="max-w-4xl mx-auto">
             <div className="bg-white rounded-2xl shadow-lg p-8 min-h-[800px] border border-gray-100">
@@ -218,8 +213,8 @@ export const FoodRecognitionNew: React.FC = () => {
                                     whileTap={{ scale: 0.99 }}
                                     htmlFor="image-input"
                                     className={`flex items-center justify-center w-full border-3 border-dashed rounded-2xl cursor-pointer transition-all duration-300 ${selectedImage
-                                            ? 'border-green-400 bg-green-50/50'
-                                            : 'border-gray-200 hover:border-green-400 hover:bg-green-50/30'
+                                        ? 'border-green-400 bg-green-50/50'
+                                        : 'border-gray-200 hover:border-green-400 hover:bg-green-50/30'
                                         }`}
                                 >
                                     <div className={`w-full ${selectedImage ? 'h-[400px]' : 'h-72'} relative`}>

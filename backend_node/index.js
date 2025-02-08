@@ -11,12 +11,14 @@ app.use(express.json());
 const userroute = require('./route/userProfile');
 const mealroute = require('./route/meal');
 // const chatroute = require('./route/chat');
-const exerciseroute=require('./route/exercise');
+// const exerciseroute=require('./route/exercise');
+const analysisroute = require('./route/analysis');
 
 app.use('/user', userroute);
 app.use('/meal', mealroute);
 // app.use('/chat', chatroute);
-app.use('/exercise', exerciseroute);
+// app.use('/exercise', exerciseroute);
+app.use('/analysis', analysisroute); 
 
 
 app.listen(PORT, () => {
