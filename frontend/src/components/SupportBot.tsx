@@ -116,8 +116,8 @@ export const SupportBot: React.FC = () => {
                                 >
                                     <div
                                         className={`max-w-[80%] p-2 rounded-lg text-sm ${message.isBot
-                                                ? 'bg-gray-100 text-gray-800'
-                                                : 'bg-blue-600 text-white'
+                                            ? 'bg-gray-100 text-gray-800'
+                                            : 'bg-blue-600 text-white'
                                             }`}
                                     >
                                         {message.text}

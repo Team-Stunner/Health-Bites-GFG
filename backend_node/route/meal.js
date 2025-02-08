@@ -67,4 +67,29 @@ router.post('/add-food', async (req, res) => {
     }
 });
 
+
+router.get('/food-history/:userid', async (req, res) => {
+    try {
+        const userid = req.params.userid.replace(/^"|"$/g, '');
+        const days = parseInt(req.query.days) || 7; // Default to 7 days
+
+        const endDate = moment().endOf('day');
+        const startDate = moment().subtract(days - 1, 'days').startOf('day');
+
+        const mealPlans = await DailyMealPlan.find({
+            user: userid,
+            date: {
+                $gte: startDate.format('YYYY-MM-DD'),
+                $lte: endDate.format('YYYY-MM-DD')
+            }
+        }).sort({ date: -1 });
+
+        res.json({ success: true, mealPlans });
+    } catch (error) {
+        console.error("Error fetching food history:", error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 module.exports = router;

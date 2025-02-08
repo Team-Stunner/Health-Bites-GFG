@@ -1,11 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState } from 'react';
-import { Camera, Image as ImageIcon, Check, Loader2, Upload } from 'lucide-react';
+import { Camera, Image as ImageIcon, Check, Loader2, Upload, Utensils } from 'lucide-react';
 import { useFood } from '../hooks/useFood';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useDiet } from '../Context/Calary';
-import { set } from 'date-fns';
 
 interface RecognizedFood {
     name: string;
@@ -23,6 +21,7 @@ interface FoodEntry {
     calories: number;
     id: string;
 }
+
 export const FoodRecognitionNew: React.FC = () => {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [recognizedFood, setRecognizedFood] = useState<RecognizedFood | null>(null);
@@ -179,117 +178,156 @@ export const FoodRecognitionNew: React.FC = () => {
     }
     console.log(foodName, calories)
     return (
-        <div className="bg-white rounded-lg shadow-md p-8 min-h-[800px]">
-            <h2 className="text-3xl font-bold mb-8 flex items-center text-gray-800">
-                <Camera className="h-8 w-8 mr-3 text-green-600" />
-                Food Recognition
-            </h2>
+        <div className="max-w-4xl mx-auto">
+            <div className="bg-white rounded-2xl shadow-lg p-8 min-h-[800px] border border-gray-100">
+                <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-3xl font-bold flex items-center text-gray-800">
+                        <Camera className="h-8 w-8 mr-3 text-green-600" />
+                        Food Recognition
+                    </h2>
+                    <div className="flex items-center space-x-2 bg-green-50 px-4 py-2 rounded-lg">
+                        <Utensils className="h-5 w-5 text-green-600" />
+                        <span className="text-green-700 font-medium">Today's Calories: {todayCalories}</span>
+                    </div>
+                </div>
 
-            <div className="grid grid-cols-1 gap-8">
-                <div className="space-y-6">
-                    <div className="bg-gray-50 p-6 rounded-xl">
-                        <h3 className="text-lg font-semibold mb-4 flex items-center text-gray-700">
-                            <Upload className="h-5 w-5 mr-2 text-green-600" />
-                            Upload Food Image
-                        </h3>
+                <div className="grid grid-cols-1 gap-8">
+                    <motion.div
+                        className="space-y-6"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <div className="bg-gradient-to-br from-gray-50 to-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+                            <h3 className="text-xl font-semibold mb-6 flex items-center text-gray-700">
+                                <Upload className="h-6 w-6 mr-3 text-green-600" />
+                                Upload Food Image
+                            </h3>
 
-                        <div className="relative">
-                            <input
-                                type="file"
-                                className="hidden"
-                                accept="image/*"
-                                onChange={(e) => {
-                                    handleImageSelect(e);
-                                }} id="image-input"
-                                disabled={isLoading}
-                            />
-                            <motion.label
-                                whileHover={{ scale: 1.01 }}
-                                whileTap={{ scale: 0.99 }}
-                                htmlFor="image-input"
-                                className={`flex items-center justify-center w-full border-2 border-dashed rounded-xl cursor-pointer transition-colors ${selectedImage ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-green-400'
-                                    }`}
-                            >
-                                <div className={`w-full ${selectedImage ? 'h-[400px]' : 'h-64'} relative`}>
-                                    {selectedImage ? (
-                                        <>
-                                            <img
-                                                src={selectedImage}
-                                                alt="Selected food"
-                                                className="h-full w-full object-contain rounded-lg"
-                                            />
-                                            <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-opacity rounded-lg flex items-center justify-center">
-                                                <p className="text-transparent hover:text-white transition-colors font-medium">
-                                                    Click to change image
-                                                </p>
+                            <div className="relative">
+                                <input
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleImageSelect}
+                                    id="image-input"
+                                    disabled={isLoading}
+                                />
+                                <motion.label
+                                    whileHover={{ scale: 1.01 }}
+                                    whileTap={{ scale: 0.99 }}
+                                    htmlFor="image-input"
+                                    className={`flex items-center justify-center w-full border-3 border-dashed rounded-2xl cursor-pointer transition-all duration-300 ${selectedImage
+                                            ? 'border-green-400 bg-green-50/50'
+                                            : 'border-gray-200 hover:border-green-400 hover:bg-green-50/30'
+                                        }`}
+                                >
+                                    <div className={`w-full ${selectedImage ? 'h-[400px]' : 'h-72'} relative`}>
+                                        {selectedImage ? (
+                                            <motion.div
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                className="h-full"
+                                            >
+                                                <img
+                                                    src={selectedImage}
+                                                    alt="Selected food"
+                                                    className="h-full w-full object-contain rounded-xl"
+                                                />
+                                                <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-300 rounded-xl flex items-center justify-center group">
+                                                    <p className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity transform scale-95 group-hover:scale-100">
+                                                        Click to change image
+                                                    </p>
+                                                </div>
+                                            </motion.div>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center h-full">
+                                                <div className="p-6 bg-green-50 rounded-full mb-4">
+                                                    <ImageIcon className="h-12 w-12 text-green-600" />
+                                                </div>
+                                                <div className="text-center space-y-2">
+                                                    <p className="text-base font-medium text-gray-700">
+                                                        Click to upload or drag and drop
+                                                    </p>
+                                                    <p className="text-sm text-gray-500">
+                                                        Recommended: High-quality images under 5MB
+                                                    </p>
+                                                </div>
                                             </div>
+                                        )}
+                                    </div>
+                                </motion.label>
+                            </div>
+
+                            <div className="mt-8 space-y-4">
+                                <motion.button
+                                    onClick={handleAnalyzeClick}
+                                    disabled={!selectedImage || isLoading}
+                                    className="w-full py-4 px-6 rounded-xl text-white font-semibold bg-gradient-to-r from-green-500 to-green-600 shadow-md hover:shadow-lg transition-all duration-300 hover:brightness-105 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                                    whileHover={{ scale: 1.01 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                            <span>Analyzing...</span>
                                         </>
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center h-full">
-                                            <ImageIcon className="h-16 w-16 text-gray-400 mb-4" />
-                                            <div className="text-center">
-                                                <p className="text-sm font-medium text-gray-600 mb-1">
-                                                    Click to upload or drag and drop
-                                                </p>
-                                                <p className="text-xs text-gray-500">
-                                                    Recommended: Images under 5MB
-                                                </p>
-                                            </div>
-                                        </div>
+                                        <>
+                                            <Camera className="h-5 w-5" />
+                                            <span>Analyze Food Image</span>
+                                        </>
                                     )}
-                                </div>
-                            </motion.label>
+                                </motion.button>
+
+                                <motion.button
+                                    onClick={handlesubmit}
+                                    disabled={!foodName || !calories}
+                                    className="w-full py-4 px-6 rounded-xl text-white font-semibold bg-gradient-to-r from-blue-500 to-blue-600 shadow-md hover:shadow-lg transition-all duration-300 hover:brightness-105 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                                    whileHover={{ scale: 1.01 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    <Check className="h-5 w-5" />
+                                    <span>Add Food Entry</span>
+                                </motion.button>
+                            </div>
                         </div>
 
-                        <motion.button onClick={handleAnalyzeClick} disabled={!selectedImage || isLoading} className="mt-6 w-full py-4 px-6 rounded-xl text-white font-medium bg-green-600 hover:bg-green-700">
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                    Analyzing...
-                                </>
-                            ) : (
-                                <>
-                                    <Camera className="h-5 w-5" />
-                                    Analyze Food Image
-                                </>
+                        <AnimatePresence>
+                            {error && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className="bg-red-50 border border-red-100 text-red-600 p-6 rounded-xl shadow-sm"
+                                >
+                                    <p className="font-medium flex items-center">
+                                        <span className="bg-red-100 p-1 rounded-full mr-2">⚠️</span>
+                                        {error}
+                                    </p>
+                                </motion.div>
                             )}
-                        </motion.button>
 
-                        <motion.button onClick={handlesubmit} disabled={!foodName || !calories} className="mt-4 w-full py-4 px-6 rounded-xl text-white font-medium bg-blue-600 hover:bg-blue-700">
-                            Add Food Entry
-                        </motion.button>
-                    </div>
-
-                    {error && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="bg-red-50 text-red-600 p-6 rounded-xl"
-                        >
-                            <p className="font-medium">{error}</p>
-                        </motion.div>
-                    )}
-
-                    <AnimatePresence>
-                        {analysisResult && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                className="bg-green-50 rounded-xl p-6"
-                            >
-                                <h3 className="text-xl font-semibold text-green-800 mb-4 flex items-center">
-                                    <Check className="h-6 w-6 mr-2 text-green-600" />
-                                    Analysis Results
-                                </h3>
-                                <div className="prose max-w-none">
-                                    <pre className="whitespace-pre-wrap text-gray-700 bg-white p-6 rounded-xl shadow-sm border border-green-100">
-                                        {analysisResult}
-                                    </pre>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                            {analysisResult && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -20 }}
+                                    className="bg-gradient-to-br from-green-50 to-green-50/30 rounded-2xl p-8 border border-green-100"
+                                >
+                                    <h3 className="text-xl font-semibold text-green-800 mb-6 flex items-center">
+                                        <Check className="h-6 w-6 mr-3 text-green-600" />
+                                        Analysis Results
+                                    </h3>
+                                    <div className="prose max-w-none">
+                                        <pre className="whitespace-pre-wrap text-gray-700 bg-white p-6 rounded-xl shadow-sm border border-green-100 overflow-auto max-h-[400px]">
+                                            {analysisResult}
+                                        </pre>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </motion.div>
                 </div>
             </div>
         </div>
