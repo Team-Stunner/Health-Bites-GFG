@@ -98,8 +98,10 @@ export const FoodRecognitionNew: React.FC = () => {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
-                maxContentLength: Infinity,
-                maxBodyLength: Infinity,
+                onUploadProgress: (progressEvent:any) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    console.log(`Upload Progress: ${percentCompleted}%`);
+                },
             });
             console.log(response.data.raw_analysis)
             setAnalysisResult(response.data.raw_analysis);
