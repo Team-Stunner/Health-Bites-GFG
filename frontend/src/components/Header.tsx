@@ -57,7 +57,7 @@ const navDropdowns: NavDropdownProps[] = [
 
 export const Header: React.FC = () => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
-
+console.log(backendUrl)
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDietProfile, setShowDietProfile] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -189,7 +189,7 @@ console.log(user?.sub);
         {user?.picture ? (
           <img
             src={user.picture}
-            alt={user.name || 'User avatar'}
+            alt={user.given_name || 'User avatar'}
             className="w-8 h-8 rounded-full border-2 border-white"
           />
         ) : (
