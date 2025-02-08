@@ -87,34 +87,35 @@ export const FoodRecognitionNew: React.FC = () => {
     const analyzeFoodImage = async (file: File) => {
         setIsLoading(true);
         setError(null);
-
+    
         try {
-            // const compressedImage = await compressImage(file);
             const formData = new FormData();
             formData.append('image', file);
-
-
+    
             const response = await axios.post('http://localhost:5000/analyze', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
-                maxContentLength: Infinity,
-                maxBodyLength: Infinity,
+                onUploadProgress: (progressEvent:any) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    console.log(`Upload Progress: ${percentCompleted}%`);
+                },
             });
-            console.log(response.data.raw_analysis)
+    
+            console.log(response.data.raw_analysis);
+    
+            // Update state in a single call
             setAnalysisResult(response.data.raw_analysis);
-            if (response.data.dish_name && response.data.total_calories) {
-                setFoodName(response.data.dish_name);
-                setCalories(response.data.total_calories);
-            }
+            setFoodName(response.data.dish_name || 'Unknown');
+            setCalories(response.data.total_calories || 0);
+    
         } catch (err) {
             console.error('Error analyzing image:', err);
-            setError('Failed to analyze image. Please try again with a smaller image.');
+            setError('Failed to analyze image. Please try again.');
         } finally {
             setIsLoading(false);
         }
     };
-
     const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -176,6 +177,7 @@ console.log(1)
             }
         }
     }
+    console.log(foodName,calories)
     return (
         <div className="bg-white rounded-lg shadow-md p-8 min-h-[800px]">
             <h2 className="text-3xl font-bold mb-8 flex items-center text-gray-800">

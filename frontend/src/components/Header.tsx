@@ -57,7 +57,7 @@ const navDropdowns: NavDropdownProps[] = [
 
 export const Header: React.FC = () => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
-
+console.log(backendUrl)
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDietProfile, setShowDietProfile] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
