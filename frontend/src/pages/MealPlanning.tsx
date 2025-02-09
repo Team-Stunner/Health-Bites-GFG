@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { MealPlanner } from '../components/MealPlanner';
+import {MealPlanner}  from '../components/MealPlanner';
 import { GroceryList } from '../components/GroceryList';
 import { MealSuggestions } from '../components/MealSuggestions';
 
@@ -15,7 +15,7 @@ export const MealPlanning: React.FC = () => {
         Meal Planning
       </motion.h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="flex-col grid-cols-1 lg:grid-cols-2 gap-8">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
