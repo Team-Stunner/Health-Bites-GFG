@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { RecipeRecommendations } from '../components/RecipeRecommendations';
+import  RecipeRecommendations  from '../components/RecipeRecommendations';
 
 export const Recipes: React.FC = () => {
     return (

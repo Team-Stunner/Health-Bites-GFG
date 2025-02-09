@@ -4,6 +4,7 @@ import { useFood } from '../hooks/useFood';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useDiet } from '../Context/Calary';
+const backendurl = import.meta.env.VITE_BACKEND_URL;
 
 interface RecognizedFood {
     name: string;
@@ -31,7 +32,6 @@ export const FoodRecognitionNew: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [analysisResult, setAnalysisResult] = useState<string | null>(null);
     const { addFoodItem } = useFood();
-    const backendurl = import.meta.env.VITE_BACKEND_URL;
 
     const { todayCalories, setTodayCalories, foodEntries, setFoodEntries } = useDiet();
 

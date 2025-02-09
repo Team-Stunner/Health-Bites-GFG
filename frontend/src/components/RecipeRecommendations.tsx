@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Clock, Flame, Plus, X, Filter,  Users, Loader2, ChefHat, Utensils, AlertCircle, Dumbbell, Wheat, Droplet } from 'lucide-react';
+import { Clock, Flame, Plus, X, Filter, Users, Loader2, ChefHat, Utensils, AlertCircle, Dumbbell, Wheat, Droplet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
+import axios from 'axios';
+const backendurl = import.meta.env.VITE_BACKEND_URL;
 
 
 interface RecipeFilters {
@@ -28,6 +29,19 @@ interface Recipe {
   calories?: number;
 }
 
+interface RecipeDetails {
+  id: number;
+  title: string;
+  instructions: string;
+  calories: number;
+}
+
+interface FoodEntry {
+  name: string;
+  calories: number;
+  id: string;
+}
+
 const LIMITS = {
   calories: { min: 50, max: 2000 },
   protein: { min: 0, max: 200 },
@@ -36,10 +50,8 @@ const LIMITS = {
 };
 
 const API_KEY = "88f4e80b21f244a991d779efdd7992cb";
-// const API_KEY = import.meta.env.VITE_API_KEY as string;
 
-
-export const RecipeRecommendations: React.FC = () => {
+const RecipeRecommendations: React.FC = () => {
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [currentIngredient, setCurrentIngredient] = useState('');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -47,6 +59,8 @@ export const RecipeRecommendations: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeDetails | null>(null);
+  const [userCalories, setUserCalories] = useState<number>(0);
 
   const [filters, setFilters] = useState<RecipeFilters>({
     numberOfMeals: 3,
@@ -137,6 +151,58 @@ export const RecipeRecommendations: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleViewRecipe = async (recipeId: number) => {
+    try {
+      const response = await fetch(
+        `https://api.spoonacular.com/recipes/${recipeId}/information?apiKey=${API_KEY}`
+      );
+      if (!response.ok) throw new Error('Failed to fetch recipe details');
+      const data = await response.json();
+      setSelectedRecipe({
+        id: data.id,
+        title: data.title,
+        instructions: data.instructions || 'No instructions available.',
+        calories: data.nutrition?.nutrients.find((n: any) => n.name === 'Calories')?.amount || 0
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch recipe details');
+    }
+  };
+
+  const  handleAddCalories = async (calories: number,foodName:string) => {
+    if (foodName && calories) {
+      const caloriesNum = calories;
+      const newEntry: FoodEntry = {
+          name: foodName,
+          calories: caloriesNum,
+          id: Date.now().toString()
+      };
+
+      try {
+          const userid = localStorage.getItem('userid') || '';
+          const response = await axios.post(`${backendurl}/meal/add-food`, {
+              userid,
+              foodName,
+              calories: caloriesNum,
+              mealTime: new Date().toISOString() // You can make this dynamic
+          });
+
+          if (response.data.dailyMealPlan.totalCalories) {
+            console.log(response.data.dailyMealPlan.totalCalories);
+              // setTodayCalories(response.data.dailyMealPlan.totalCalories);
+              // setFoodEntries([...foodEntries, ...response.data.dailyMealPlan.meals]);
+          }
+
+          // setFoodName('');
+          // setCalories('');
+      } catch (error) {
+          console.error("Error adding food:", error);
+      }
+  }
+    // setUserCalories(prev => prev + calories);
+    setSelectedRecipe(null);
   };
 
   const renderNutritionFilter = (
@@ -373,10 +439,17 @@ export const RecipeRecommendations: React.FC = () => {
         </div>
 
         {recipes.length > 0 && (
+          console.log(recipes),
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Found Recipes</h2>
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">Found Recipes</h2>
+              <div className="bg-green-100 px-4 py-2 rounded-lg">
+                <span className="text-green-800 font-medium">Total Calories: {userCalories.toFixed(0)}</span>
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {recipes.map((recipe) => (
+                
                 <motion.div
                   key={recipe.id}
                   layout
@@ -428,19 +501,72 @@ export const RecipeRecommendations: React.FC = () => {
                           {recipe.usedIngredientCount} ingredients available
                         </span>
                       </div>
-                      <div className="flex items-center">
-                        <div className="h-2 w-2 rounded-full bg-orange-500 mr-2" />
-                        <span className="text-sm text-gray-600">
-                          {recipe.missedIngredientCount} needed
-                        </span>
-                      </div>
                     </div>
+
+                    <button
+                      onClick={() => handleViewRecipe(recipe.id)}
+                      className="w-full mt-2 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      View Recipe
+                    </button>
                   </div>
                 </motion.div>
               ))}
             </div>
           </div>
         )}
+
+        <AnimatePresence>
+          {selectedRecipe && (
+            console.log(selectedRecipe),
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+              onClick={() => setSelectedRecipe(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="p-6 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-2xl font-bold text-gray-900">{selectedRecipe.title}</h3>
+                    <button
+                      onClick={() => setSelectedRecipe(null)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                  
+                  <div className="prose prose-green max-w-none">
+                    <div dangerouslySetInnerHTML={{ __html: selectedRecipe.instructions }} />
+                  </div>
+
+                  <div className="flex justify-end space-x-4 pt-4 border-t">
+                    <button
+                      onClick={() => setSelectedRecipe(null)}
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={() => handleAddCalories(selectedRecipe.calories,selectedRecipe.title)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Add to My Calories ({selectedRecipe.calories.toFixed(0)} cal)
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
