@@ -4,6 +4,8 @@ import { useFood } from '../hooks/useFood';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useDiet } from '../Context/Calary';
+import Swal from 'sweetalert2';
+
 const backendurl = import.meta.env.VITE_BACKEND_URL;
 
 interface RecognizedFood {
@@ -156,7 +158,7 @@ export const FoodRecognitionNew: React.FC = () => {
                     userid,
                     foodName,
                     calories: caloriesNum,
-                    mealTime: new Date().toISOString() // You can make this dynamic
+                    mealTime: new Date().toISOString()
                 });
 
                 if (response.data.dailyMealPlan.totalCalories) {
@@ -164,10 +166,35 @@ export const FoodRecognitionNew: React.FC = () => {
                     setFoodEntries([...foodEntries, ...response.data.dailyMealPlan.meals]);
                 }
 
+                // Show success message with SweetAlert2
+                await Swal.fire({
+                    title: 'Success!',
+                    text: `Added ${foodName} (${caloriesNum} calories) to your food diary`,
+                    icon: 'success',
+                    confirmButtonText: 'Great!',
+                    confirmButtonColor: '#22c55e',
+                    showClass: {
+                        popup: 'animate__animated animate__fadeInDown'
+                    },
+                    hideClass: {
+                        popup: 'animate__animated animate__fadeOutUp'
+                    }
+                });
+
                 setFoodName('');
                 setCalories('');
+                setSelectedImage(null);
+                setAnalysisResult(null);
             } catch (error) {
                 console.error("Error adding food:", error);
+                // Show error message with SweetAlert2
+                await Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to add food entry. Please try again.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#ef4444'
+                });
             }
         }
     };

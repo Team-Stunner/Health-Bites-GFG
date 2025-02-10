@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import {
-    Save, X, Scale, Ruler, Apple, Utensils, Activity,
+    Save, X, Scale, Ruler, Apple, Activity,
     Target, AlertCircle, ChevronRight, Loader2
 } from 'lucide-react';
 
