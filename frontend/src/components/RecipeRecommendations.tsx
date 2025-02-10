@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Clock, Flame, Plus, X, Filter, Loader2, ChefHat, Utensils, AlertCircle, Dumbbell, Wheat, Droplet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { useDiet } from '../Context/Calary';
 import Swal from 'sweetalert2';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
@@ -162,6 +163,16 @@ const RecipeRecommendations: React.FC = () => {
       } else {
         throw new Error('Failed to generate recipes');
       }
+    
+      let caloriesArray: number[] = [];
+  
+      for (let i = 0; i < data.length; i++) {
+        const response = await fetch(`https://api.spoonacular.com/recipes/${data[i].id}/nutritionWidget.json?apiKey=${API_KEY}`);
+        const caldata = await response.json();
+        caloriesArray.push(caldata.calories);
+      }
+  
+      setRecipeCalories(caloriesArray); // Update state once after loop
     } catch (err) {
       setError('Failed to generate recipes. Please try again.');
       console.error('Error generating recipes:', err);
@@ -170,7 +181,7 @@ const RecipeRecommendations: React.FC = () => {
     }
   };
 
-  const handleAddToMealPlan = async (recipe: Recipe) => {
+  const handleAddToMealPlan = async (recipe: Recipe,calorie:number) => {
     try {
       const userId = localStorage.getItem('userid');
       if (!userId) {
@@ -401,6 +412,7 @@ const RecipeRecommendations: React.FC = () => {
                       </span>
                     </div>
                   </div>
+                  <p>Calories: {recipeCalories[index] || "Loading..."}</p> 
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="flex items-center gap-2">
                       <Flame className="w-4 h-4 text-orange-500" />
@@ -427,7 +439,7 @@ const RecipeRecommendations: React.FC = () => {
                       View Details
                     </button>
                     <button
-                      onClick={() => handleAddToMealPlan(recipe)}
+                      onClick={() => handleAddToMealPlan(recipe,recipeCalories[index])}
                       className="text-blue-500 hover:text-blue-600 font-medium"
                     >
                       Add to Meal Plan
@@ -490,6 +502,7 @@ const RecipeRecommendations: React.FC = () => {
                       className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
                     >
                       Add to Meal Plan
+                      Add to My Calories ({selectedRecipe.calories} cal)
                     </button>
                   </div>
                 </div>

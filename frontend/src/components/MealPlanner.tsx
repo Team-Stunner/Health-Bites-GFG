@@ -4,23 +4,23 @@ import { useFood } from '../hooks/useFood';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const MealPlanner: React.FC = () => {
-  const { 
-    weeklyMealPlan, 
-    generateMealPlan, 
-    loading, 
-    error, 
-    dietType, 
-    setDietType, 
-    ingredients, 
+  const {
+    weeklyMealPlan,
+    generateMealPlan,
+    loading,
+    error,
+    dietType,
+    setDietType,
+    ingredients,
     setIngredients,
     targetCalories,
-    setTargetCalories 
+    setTargetCalories
   } = useFood();
   const [newIngredient, setNewIngredient] = useState('');
   const [selectedMeal, setSelectedMeal] = useState<number | null>(null);
 
   useEffect(() => {
-    if (weeklyMealPlan.length === 0 ) {//&& ingredients.length > 0
+    if (weeklyMealPlan.length === 0) {//&& ingredients.length > 0
       generateMealPlan();
     }
   }, [generateMealPlan, weeklyMealPlan.length, ingredients.length]);
@@ -52,7 +52,7 @@ export const MealPlanner: React.FC = () => {
             <Calendar className="h-6 w-6 mr-2 text-green-600" />
             Indian Weekly Meal Plan
           </h2>
-          
+
           <div className="w-full sm:w-auto space-y-4">
             <div className="flex items-center gap-4 mb-4">
               <div className="flex-1">
@@ -191,11 +191,10 @@ export const MealPlanner: React.FC = () => {
                               <Clock className="h-4 w-4 mr-1 text-blue-500" />
                               {meal.prepTime} min
                             </span>
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              meal.vegetarian 
-                                ? 'bg-green-100 text-green-800' 
+                            <span className={`px-2 py-1 rounded-full text-xs ${meal.vegetarian
+                                ? 'bg-green-100 text-green-800'
                                 : 'bg-red-100 text-red-800'
-                            }`}>
+                              }`}>
                               {meal.vegetarian ? 'Veg' : 'Non-Veg'}
                             </span>
                           </div>
