@@ -99,16 +99,25 @@ export const FoodRecognitionNew: React.FC = () => {
                 },
             });
 
-            console.log(response.data);
+            if (!response.data) {
+                throw new Error('No data received from server');
+            }
 
             // Update state with the analysis results
             setAnalysisResult(response.data.raw_analysis);
             setFoodName(response.data.dish_name || 'Unknown');
-            setCalories(response.data.total_calories || 0);
+            setCalories(response.data.total_calories?.toString() || '0');
 
         } catch (err) {
             console.error('Error analyzing image:', err);
             setError('Failed to analyze image. Please try again.');
+            await Swal.fire({
+                title: 'Analysis Error',
+                text: 'Failed to analyze the image. Please try again.',
+                icon: 'error',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#ef4444'
+            });
         } finally {
             setIsLoading(false);
         }
@@ -125,6 +134,7 @@ export const FoodRecognitionNew: React.FC = () => {
                 };
                 reader.readAsDataURL(compressedImage);
                 setAnalysisResult(null);
+                setError(null); // Clear any previous errors
             } catch (err) {
                 setError('Failed to process image. Please try a different image.');
             }
@@ -144,58 +154,93 @@ export const FoodRecognitionNew: React.FC = () => {
     const handlesubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (foodName && calories) {
-            const caloriesNum = parseInt(calories);
-            const newEntry: FoodEntry = {
-                name: foodName,
-                calories: caloriesNum,
-                id: Date.now().toString()
-            };
+        if (!foodName || !calories) {
+            await Swal.fire({
+                title: 'Missing Information',
+                text: 'Please ensure both food name and calories are provided.',
+                icon: 'warning',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#f59e0b'
+            });
+            return;
+        }
 
-            try {
-                const userid = localStorage.getItem('userid') || '';
-                const response = await axios.post(`${backendurl}/meal/add-food`, {
-                    userid,
-                    foodName,
-                    calories: caloriesNum,
-                    mealTime: new Date().toISOString()
-                });
+        const caloriesNum = parseInt(calories);
+        if (isNaN(caloriesNum) || caloriesNum < 0) {
+            await Swal.fire({
+                title: 'Invalid Calories',
+                text: 'Please enter a valid number of calories.',
+                icon: 'warning',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#f59e0b'
+            });
+            return;
+        }
 
-                if (response.data.dailyMealPlan.totalCalories) {
-                    setTodayCalories(response.data.dailyMealPlan.totalCalories);
-                    setFoodEntries([...foodEntries, ...response.data.dailyMealPlan.meals]);
-                }
-
-                // Show success message with SweetAlert2
-                await Swal.fire({
-                    title: 'Success!',
-                    text: `Added ${foodName} (${caloriesNum} calories) to your food diary`,
-                    icon: 'success',
-                    confirmButtonText: 'Great!',
-                    confirmButtonColor: '#22c55e',
-                    showClass: {
-                        popup: 'animate__animated animate__fadeInDown'
-                    },
-                    hideClass: {
-                        popup: 'animate__animated animate__fadeOutUp'
-                    }
-                });
-
-                setFoodName('');
-                setCalories('');
-                setSelectedImage(null);
-                setAnalysisResult(null);
-            } catch (error) {
-                console.error("Error adding food:", error);
-                // Show error message with SweetAlert2
-                await Swal.fire({
-                    title: 'Error!',
-                    text: 'Failed to add food entry. Please try again.',
-                    icon: 'error',
-                    confirmButtonText: 'OK',
-                    confirmButtonColor: '#ef4444'
-                });
+        try {
+            const userid = localStorage.getItem('userid');
+            if (!userid) {
+                throw new Error('User ID not found');
             }
+
+            const response = await axios.post(`${backendurl}/meal/add-food`, {
+                userid,
+                foodName,
+                calories: caloriesNum,
+                mealTime: new Date().toISOString()
+            });
+
+            if (!response.data) {
+                throw new Error('No response data received');
+            }
+
+            // Update the total calories and food entries if available in the response
+            if (response.data.dailyMealPlan) {
+                const { totalCalories, meals } = response.data.dailyMealPlan;
+                if (typeof totalCalories === 'number') {
+                    setTodayCalories(totalCalories);
+                }
+                if (Array.isArray(meals)) {
+                    setFoodEntries(prevEntries => [...prevEntries, ...meals]);
+                }
+            }
+
+            await Swal.fire({
+                title: 'Success!',
+                text: `Added ${foodName} (${caloriesNum} calories) to your food diary`,
+                icon: 'success',
+                confirmButtonText: 'Great!',
+                confirmButtonColor: '#22c55e',
+                showClass: {
+                    popup: 'animate__animated animate__fadeInDown'
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__fadeOutUp'
+                }
+            });
+
+            // Reset form
+            setFoodName('');
+            setCalories('');
+            setSelectedImage(null);
+            setAnalysisResult(null);
+            setError(null);
+
+        } catch (error) {
+            console.error("Error adding food:", error);
+
+            let errorMessage = 'Failed to add food entry. Please try again.';
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+
+            await Swal.fire({
+                title: 'Error!',
+                text: errorMessage,
+                icon: 'error',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#ef4444'
+            });
         }
     };
 
@@ -240,8 +285,8 @@ export const FoodRecognitionNew: React.FC = () => {
                                     whileTap={{ scale: 0.99 }}
                                     htmlFor="image-input"
                                     className={`flex items-center justify-center w-full border-3 border-dashed rounded-2xl cursor-pointer transition-all duration-300 ${selectedImage
-                                        ? 'border-green-400 bg-green-50/50'
-                                        : 'border-gray-200 hover:border-green-400 hover:bg-green-50/30'
+                                            ? 'border-green-400 bg-green-50/50'
+                                            : 'border-gray-200 hover:border-green-400 hover:bg-green-50/30'
                                         }`}
                                 >
                                     <div className={`w-full ${selectedImage ? 'h-[400px]' : 'h-72'} relative`}>

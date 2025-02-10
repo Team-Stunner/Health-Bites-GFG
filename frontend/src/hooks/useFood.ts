@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import axios from 'axios';
 import { Meal } from '../types/meal';
 
-const SPOONACULAR_API_KEY = "abe392bcfc544c33b74fb20c9bee3c12";
+const SPOONACULAR_API_KEY = "842a123159174a33b761edb17690ad62";
 const BASE_URL = 'https://api.spoonacular.com/recipes';
 
 type MealTime = 'breakfast' | 'lunch' | 'dinner';
