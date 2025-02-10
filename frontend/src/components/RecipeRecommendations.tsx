@@ -63,8 +63,8 @@ const RecipeRecommendations: React.FC = () => {
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeDetails | null>(null);
   const [userCalories, setUserCalories] = useState<number>(0);
   const [recipeCalories, setRecipeCalories] = useState<any>([]);
-      const { todayCalories, setTodayCalories, foodEntries, setFoodEntries } = useDiet();
-  
+  const { todayCalories, setTodayCalories, foodEntries, setFoodEntries } = useDiet();
+
   const [filters, setFilters] = useState<RecipeFilters>({
     numberOfMeals: 3,
     dietType: 'non-vegetarian',
@@ -149,15 +149,15 @@ const RecipeRecommendations: React.FC = () => {
 
       const data = await response.json();
       setRecipes(data);
-    
+
       let caloriesArray: number[] = [];
-  
+
       for (let i = 0; i < data.length; i++) {
         const response = await fetch(`https://api.spoonacular.com/recipes/${data[i].id}/nutritionWidget.json?apiKey=${API_KEY}`);
         const caldata = await response.json();
         caloriesArray.push(caldata.calories);
       }
-  
+
       setRecipeCalories(caloriesArray); // Update state once after loop
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch recipes');
@@ -166,7 +166,7 @@ const RecipeRecommendations: React.FC = () => {
     }
   };
 
-  const handleViewRecipe = async (recipeId: number,calorie:number) => {
+  const handleViewRecipe = async (recipeId: number, calorie: number) => {
     try {
       const response = await fetch(
         `https://api.spoonacular.com/recipes/${recipeId}/information?apiKey=${API_KEY}`
@@ -184,36 +184,36 @@ const RecipeRecommendations: React.FC = () => {
     }
   };
 
-  const  handleAddCalories = async (calories: number,foodName:string) => {
+  const handleAddCalories = async (calories: any, foodName: string) => {
     if (foodName && calories) {
-      const caloriesNum = calories;
+      const caloriesNum = parseInt(calories);
       const newEntry: FoodEntry = {
-          name: foodName,
-          calories: caloriesNum,
-          id: Date.now().toString()
+        name: foodName,
+        calories: caloriesNum,
+        id: Date.now().toString()
       };
 
       try {
-          const userid = localStorage.getItem('userid') || '';
-          const response = await axios.post(`${backendurl}/meal/add-food`, {
-              userid,
-              foodName,
-              calories: caloriesNum,
-              mealTime: new Date().toISOString() // You can make this dynamic
-          });
+        const userid = localStorage.getItem('userid') || '';
+        const response = await axios.post(`${backendurl}/meal/add-food`, {
+          userid,
+          foodName,
+          calories: caloriesNum,
+          mealTime: new Date().toISOString() // You can make this dynamic
+        });
 
-          if (response.data.dailyMealPlan.totalCalories) {
-            console.log(response.data.dailyMealPlan.totalCalories);
-              setTodayCalories(response.data.dailyMealPlan.totalCalories);
-              setFoodEntries([...foodEntries, ...response.data.dailyMealPlan.meals]);
-          }
+        if (response.data.dailyMealPlan.totalCalories) {
+          console.log(response.data.dailyMealPlan.totalCalories);
+          setTodayCalories(response.data.dailyMealPlan.totalCalories);
+          setFoodEntries([...foodEntries, ...response.data.dailyMealPlan.meals]);
+        }
 
-          // setFoodName('');
-          // setCalories('');
+        // setFoodName('');
+        // setCalories('');
       } catch (error) {
-          console.error("Error adding food:", error);
+        console.error("Error adding food:", error);
       }
-  }
+    }
     // setUserCalories(prev => prev + calories);
     setSelectedRecipe(null);
   };
@@ -461,8 +461,8 @@ const RecipeRecommendations: React.FC = () => {
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recipes.map((recipe,index) => (
-                
+              {recipes.map((recipe, index) => (
+
                 <motion.div
                   key={recipe.id}
                   layout
@@ -488,7 +488,7 @@ const RecipeRecommendations: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <p>Calories: {recipeCalories[index] || "Loading..."}</p> 
+                  <p>Calories: {recipeCalories[index] || "Loading..."}</p>
 
                   <div className="p-6 space-y-4">
                     <div className="flex items-center justify-between text-sm text-gray-600">
@@ -517,7 +517,7 @@ const RecipeRecommendations: React.FC = () => {
                       </div>
                     </div>
                     <button
-                      onClick={() => handleViewRecipe(recipe.id,recipeCalories[index])}
+                      onClick={() => handleViewRecipe(recipe.id, recipeCalories[index])}
                       className="w-full mt-2 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
                     >
                       View Recipe
@@ -556,7 +556,7 @@ const RecipeRecommendations: React.FC = () => {
                       <X className="h-6 w-6" />
                     </button>
                   </div>
-                  
+
                   <div className="prose prose-green max-w-none">
                     <div dangerouslySetInnerHTML={{ __html: selectedRecipe.instructions }} />
                   </div>
@@ -569,7 +569,7 @@ const RecipeRecommendations: React.FC = () => {
                       Close
                     </button>
                     <button
-                      onClick={() => handleAddCalories(selectedRecipe.calories,selectedRecipe.title)}
+                      onClick={() => handleAddCalories(selectedRecipe.calories, selectedRecipe.title)}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                     >
                       Add to My Calories ({selectedRecipe.calories} cal)
