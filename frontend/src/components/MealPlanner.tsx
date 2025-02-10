@@ -1,29 +1,37 @@
-import React, { useEffect, useState } from 'react';
-import { Calendar, RefreshCw, Clock, Flame, Coffee, UtensilsCrossed, ChefHat, Plus, X } from 'lucide-react';
-import { useFood } from '../hooks/useFood';
+import React, { useState } from 'react';
+import { ChefHat, Plus, X, Clock, Flame, UtensilsCrossed, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+import Swal from 'sweetalert2';
+
+interface Recipe {
+  id: number;
+  title: string;
+  readyInMinutes: number;
+  servings: number;
+  sourceUrl: string;
+  image: string;
+  nutrition: {
+    nutrients: {
+      name: string;
+      amount: number;
+      unit: string;
+    }[];
+  };
+  usedIngredientCount: number;
+  missedIngredientCount: number;
+  likes: number;
+}
 
 export const MealPlanner: React.FC = () => {
-  const {
-    weeklyMealPlan,
-    generateMealPlan,
-    loading,
-    error,
-    dietType,
-    setDietType,
-    ingredients,
-    setIngredients,
-    targetCalories,
-    setTargetCalories
-  } = useFood();
+  const [ingredients, setIngredients] = useState<string[]>([]);
   const [newIngredient, setNewIngredient] = useState('');
-  const [selectedMeal, setSelectedMeal] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (weeklyMealPlan.length === 0) {//&& ingredients.length > 0
-      generateMealPlan();
-    }
-  }, [generateMealPlan, weeklyMealPlan.length, ingredients.length]);
+  const [loading, setLoading] = useState(false);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [preferences, setPreferences] = useState({
+    diet: 'vegetarian',
+    maxReadyTime: 60,
+  });
 
   const handleAddIngredient = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,65 +45,102 @@ export const MealPlanner: React.FC = () => {
     setIngredients(ingredients.filter(ing => ing !== ingredient));
   };
 
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const mealIcons = {
-    breakfast: <Coffee className="h-5 w-5 text-orange-500" />,
-    lunch: <UtensilsCrossed className="h-5 w-5 text-green-500" />,
-    dinner: <ChefHat className="h-5 w-5 text-purple-500" />,
+  const findRecipes = async () => {
+    if (ingredients.length === 0) {
+      await Swal.fire({
+        title: 'No Ingredients',
+        text: 'Please add some ingredients first!',
+        icon: 'warning',
+        confirmButtonColor: '#16a34a'
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await axios.get('https://api.spoonacular.com/recipes/complexSearch', {
+        params: {
+          apiKey: import.meta.env.VITE_SPOONACULAR_API_KEY,
+          includeIngredients: ingredients.join(','),
+          addRecipeNutrition: true,
+          diet: preferences.diet || undefined,
+          maxReadyTime: preferences.maxReadyTime,
+          number: 9,
+          sort: 'max-used-ingredients',
+          ranking: 2,
+        },
+      });
+
+      setRecipes(response.data.results);
+
+      await Swal.fire({
+        title: 'Recipes Found!',
+        text: `Found ${response.data.results.length} recipes using your ingredients.`,
+        icon: 'success',
+        confirmButtonText: 'Great!',
+        confirmButtonColor: '#16a34a',
+      });
+    } catch (error) {
+      console.error('Error finding recipes:', error);
+      await Swal.fire({
+        title: 'Error!',
+        text: 'Failed to find recipes. Please try again.',
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getNutrientValue = (recipe: Recipe, nutrientName: string) => {
+    const nutrient = recipe.nutrition.nutrients.find(n => n.name === nutrientName);
+    return nutrient ? Math.round(nutrient.amount) : 0;
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
-          <h2 className="text-2xl font-bold flex items-center">
-            <Calendar className="h-6 w-6 mr-2 text-green-600" />
-            Indian Weekly Meal Plan
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-3xl font-bold flex items-center text-gray-800">
+            <ChefHat className="h-8 w-8 mr-3 text-green-600" />
+            Smart Recipe Finder
           </h2>
+        </div>
 
-          <div className="w-full sm:w-auto space-y-4">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex-1">
-                <label htmlFor="calories" className="block text-sm font-medium text-gray-700 mb-1">
-                  Daily Calories Target
-                </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-4 flex items-center text-gray-700">
+                <UtensilsCrossed className="h-5 w-5 mr-2 text-green-600" />
+                Your Ingredients
+              </h3>
+
+              <form onSubmit={handleAddIngredient} className="flex gap-2 mb-4">
                 <input
-                  type="number"
-                  id="calories"
-                  min="1200"
-                  max="4000"
-                  value={targetCalories}
-                  onChange={(e) => setTargetCalories(Number(e.target.value))}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                  placeholder="Enter daily calories"
+                  type="text"
+                  value={newIngredient}
+                  onChange={(e) => setNewIngredient(e.target.value)}
+                  placeholder="Add ingredient..."
+                  className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
                 />
-                <p className="text-sm text-gray-500 mt-1">
-                  Each meal will target {Math.round(targetCalories / 3)} calories
-                </p>
-              </div>
-            </div>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  type="submit"
+                  className="p-2 rounded-lg bg-green-100 text-green-600 hover:bg-green-200"
+                >
+                  <Plus className="h-5 w-5" />
+                </motion.button>
+              </form>
 
-            <form onSubmit={handleAddIngredient} className="flex gap-2">
-              <input
-                type="text"
-                value={newIngredient}
-                onChange={(e) => setNewIngredient(e.target.value)}
-                placeholder="Add ingredient..."
-                className="flex-1 min-w-[200px] rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-              />
-              <button
-                type="submit"
-                className="p-2 rounded-md bg-green-100 text-green-600 hover:bg-green-200"
-              >
-                <Plus className="h-5 w-5" />
-              </button>
-            </form>
-
-            {ingredients.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mb-6">
                 {ingredients.map((ingredient) => (
-                  <span
+                  <motion.span
                     key={ingredient}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
                     className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-50 text-green-700"
                   >
                     {ingredient}
@@ -105,164 +150,127 @@ export const MealPlanner: React.FC = () => {
                     >
                       <X className="h-4 w-4" />
                     </button>
-                  </span>
+                  </motion.span>
                 ))}
               </div>
-            )}
+            </div>
 
-            <div className="flex items-center gap-4">
-              <select
-                value={dietType}
-                onChange={(e) => setDietType(e.target.value as 'vegetarian' | 'non-vegetarian')}
-                className="block w-40 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-              >
-                <option value="vegetarian">Vegetarian</option>
-                <option value="non-vegetarian">Non-Vegetarian</option>
-              </select>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Diet Preference
+                </label>
+                <select
+                  value={preferences.diet}
+                  onChange={(e) => setPreferences({ ...preferences, diet: e.target.value })}
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                >
+                  <option value="vegetarian">Vegetarian</option>
+                  <option value="vegan">Vegan</option>
+                  <option value="paleo">Paleo</option>
+                  <option value="">No Restrictions</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Maximum Cooking Time (minutes)
+                </label>
+                <input
+                  type="number"
+                  value={preferences.maxReadyTime}
+                  onChange={(e) => setPreferences({ ...preferences, maxReadyTime: parseInt(e.target.value) })}
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                  min="10"
+                  max="180"
+                  step="5"
+                />
+              </div>
 
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={generateMealPlan}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={findRecipes}
                 disabled={loading || ingredients.length === 0}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                className="w-full py-3 px-4 rounded-lg text-white font-medium bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                <RefreshCw className={`h-5 w-5 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Generating...' : 'Generate Plan'}
+                <ChefHat className={`h-5 w-5 mr-2 ${loading ? 'animate-bounce' : ''}`} />
+                {loading ? 'Finding recipes...' : 'Find Recipes'}
               </motion.button>
             </div>
           </div>
         </div>
 
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-md">
-            {error}
-          </div>
-        )}
-
-        <div className="space-y-8">
-          {days.map((day, dayIndex) => (
+        <AnimatePresence mode="wait">
+          {recipes.length > 0 && (
             <motion.div
-              key={day}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: dayIndex * 0.1 }}
-              className="border-b border-gray-200 pb-6 last:border-b-0"
+              exit={{ opacity: 0, y: -20 }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-6"
             >
-              <h3 className="text-xl font-semibold mb-4 text-gray-800 bg-gray-50 p-3 rounded-lg">
-                {day}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {weeklyMealPlan[dayIndex]?.map((meal, mealIndex) => (
-                  <motion.div
-                    key={meal?.id || mealIndex}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: (dayIndex * 3 + mealIndex) * 0.05 }}
-                    className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden cursor-pointer"
-                    onClick={() => setSelectedMeal(meal?.id || null)}
-                  >
-                    {meal ? (
-                      <>
-                        <div className="relative">
-                          <img
-                            src={meal.image}
-                            alt={meal.name}
-                            className="w-full h-48 object-cover"
-                          />
-                          <div className="absolute top-2 right-2 flex gap-2">
-                            {mealIcons[meal.type]}
-                          </div>
-                        </div>
-                        <div className="p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium text-lg text-gray-900">{meal.name}</h4>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-3">{meal.description}</p>
-                          <div className="flex items-center justify-between text-sm text-gray-500">
-                            <span className="flex items-center">
-                              <Flame className="h-4 w-4 mr-1 text-red-500" />
-                              {meal.calories} cal
-                              <span className="text-xs ml-1">
-                                ({Math.round((meal.calories / (targetCalories / 3)) * 100)}% of target)
-                              </span>
-                            </span>
-                            <span className="flex items-center">
-                              <Clock className="h-4 w-4 mr-1 text-blue-500" />
-                              {meal.prepTime} min
-                            </span>
-                            <span className={`px-2 py-1 rounded-full text-xs ${meal.vegetarian
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                              }`}>
-                              {meal.vegetarian ? 'Veg' : 'Non-Veg'}
-                            </span>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex items-center justify-center h-48 bg-gray-50">
-                        <p className="text-gray-500">Loading meal...</p>
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              {recipes.map((recipe) => (
+                <motion.div
+                  key={recipe.id}
+                  whileHover={{ scale: 1.02 }}
+                  className="bg-white rounded-lg shadow-md overflow-hidden"
+                >
+                  <img
+                    src={recipe.image}
+                    alt={recipe.title}
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-semibold text-gray-900 mb-2 flex-1">{recipe.title}</h4>
+                      <a
+                        href={recipe.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-green-600 hover:text-green-700"
+                      >
+                        <ExternalLink className="h-5 w-5" />
+                      </a>
+                    </div>
 
-        <AnimatePresence>
-          {selectedMeal && weeklyMealPlan.flat().find(meal => meal?.id === selectedMeal) && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
-              onClick={() => setSelectedMeal(null)}
-            >
-              <motion.div
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.9 }}
-                className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-                onClick={e => e.stopPropagation()}
-              >
-                {(() => {
-                  const meal = weeklyMealPlan.flat().find(m => m?.id === selectedMeal);
-                  return meal ? (
-                    <>
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-xl font-bold">{meal.name}</h3>
-                        <button
-                          onClick={() => setSelectedMeal(null)}
-                          className="text-gray-500 hover:text-gray-700"
-                        >
-                          <X className="h-6 w-6" />
-                        </button>
-                      </div>
-                      <div className="space-y-6">
+                    <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
+                      <span className="flex items-center">
+                        <Clock className="h-4 w-4 mr-1 text-blue-500" />
+                        {recipe.readyInMinutes} min
+                      </span>
+                      <span className="flex items-center">
+                        <UtensilsCrossed className="h-4 w-4 mr-1 text-purple-500" />
+                        {recipe.servings} servings
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                        {recipe.usedIngredientCount} ingredients used
+                      </span>
+                      {recipe.missedIngredientCount > 0 && (
+                        <span className="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-800">
+                          {recipe.missedIngredientCount} missing
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center">
+                        <Flame className="h-4 w-4 mr-1 text-red-500" />
                         <div>
-                          <h4 className="font-semibold mb-2">Ingredients:</h4>
-                          <ul className="list-disc list-inside space-y-1">
-                            {meal.ingredients.map((ingredient, index) => (
-                              <li key={index} className="text-gray-700">{ingredient}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div>
-                          <h4 className="font-semibold mb-2">Instructions:</h4>
-                          <ol className="list-decimal list-inside space-y-2">
-                            {meal.instructions.map((step, index) => (
-                              <li key={index} className="text-gray-700">{step}</li>
-                            ))}
-                          </ol>
+                          <p className="text-gray-500">Calories</p>
+                          <p className="font-medium">{getNutrientValue(recipe, 'Calories')}</p>
                         </div>
                       </div>
-                    </>
-                  ) : null;
-                })()}
-              </motion.div>
+                      <div>
+                        <p className="text-gray-500">Protein</p>
+                        <p className="font-medium">{getNutrientValue(recipe, 'Protein')}g</p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </motion.div>
           )}
         </AnimatePresence>
