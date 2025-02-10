@@ -16,7 +16,7 @@ import {
   ClipboardList,
   ScrollText,
   Cookie,
-  Sparkles
+  Home
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DietProfile, DietProfileData } from './DietProfile';
@@ -241,9 +241,9 @@ export const Header: React.FC = () => {
                   transition={{ duration: 0.5 }}
                   className="bg-white/10 p-2 rounded-xl"
                 >
-                  <Sparkles className="h-6 w-6 text-white" />
+                  <Activity className="h-6 w-6 text-white" />
                 </motion.div>
-                <span className="text-xl font-bold">Health Bite</span>
+                <span className="text-xl font-bold">Health Bites</span>
               </Link>
             </div>
 
@@ -276,7 +276,7 @@ export const Header: React.FC = () => {
                         ? 'bg-green-700/20 text-white font-semibold'
                         : 'text-green-50 hover:bg-green-700/10 hover:text-white'}`}
                   >
-                    <Sparkles size={20} />
+                    <Home size={20} />
                     <span>Home</span>
                   </Link>
                 </motion.div>
@@ -357,7 +357,7 @@ export const Header: React.FC = () => {
                     className="flex items-center space-x-3 text-green-50 hover:text-white transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    <Sparkles size={20} />
+                    <Activity size={20} />
                     <span>Home</span>
                   </Link>
                 )}
