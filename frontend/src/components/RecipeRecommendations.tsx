@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Clock, Flame, Plus, X, Filter, Users, Loader2, ChefHat, Utensils, AlertCircle, Dumbbell, Wheat, Droplet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { useDiet } from '../Context/Calary';
 const backendurl = import.meta.env.VITE_BACKEND_URL;
 
 
@@ -61,7 +62,9 @@ const RecipeRecommendations: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeDetails | null>(null);
   const [userCalories, setUserCalories] = useState<number>(0);
-
+  const [recipeCalories, setRecipeCalories] = useState<any>([]);
+      const { todayCalories, setTodayCalories, foodEntries, setFoodEntries } = useDiet();
+  
   const [filters, setFilters] = useState<RecipeFilters>({
     numberOfMeals: 3,
     dietType: 'non-vegetarian',
@@ -146,6 +149,16 @@ const RecipeRecommendations: React.FC = () => {
 
       const data = await response.json();
       setRecipes(data);
+    
+      let caloriesArray: number[] = [];
+  
+      for (let i = 0; i < data.length; i++) {
+        const response = await fetch(`https://api.spoonacular.com/recipes/${data[i].id}/nutritionWidget.json?apiKey=${API_KEY}`);
+        const caldata = await response.json();
+        caloriesArray.push(caldata.calories);
+      }
+  
+      setRecipeCalories(caloriesArray); // Update state once after loop
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch recipes');
     } finally {
@@ -153,7 +166,7 @@ const RecipeRecommendations: React.FC = () => {
     }
   };
 
-  const handleViewRecipe = async (recipeId: number) => {
+  const handleViewRecipe = async (recipeId: number,calorie:number) => {
     try {
       const response = await fetch(
         `https://api.spoonacular.com/recipes/${recipeId}/information?apiKey=${API_KEY}`
@@ -164,7 +177,7 @@ const RecipeRecommendations: React.FC = () => {
         id: data.id,
         title: data.title,
         instructions: data.instructions || 'No instructions available.',
-        calories: data.nutrition?.nutrients.find((n: any) => n.name === 'Calories')?.amount || 0
+        calories: calorie || 0
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch recipe details');
@@ -191,8 +204,8 @@ const RecipeRecommendations: React.FC = () => {
 
           if (response.data.dailyMealPlan.totalCalories) {
             console.log(response.data.dailyMealPlan.totalCalories);
-              // setTodayCalories(response.data.dailyMealPlan.totalCalories);
-              // setFoodEntries([...foodEntries, ...response.data.dailyMealPlan.meals]);
+              setTodayCalories(response.data.dailyMealPlan.totalCalories);
+              setFoodEntries([...foodEntries, ...response.data.dailyMealPlan.meals]);
           }
 
           // setFoodName('');
@@ -444,11 +457,11 @@ const RecipeRecommendations: React.FC = () => {
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-900">Found Recipes</h2>
               <div className="bg-green-100 px-4 py-2 rounded-lg">
-                <span className="text-green-800 font-medium">Total Calories: {userCalories.toFixed(0)}</span>
+                <span className="text-green-800 font-medium">Total Calories: {todayCalories}</span>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recipes.map((recipe) => (
+              {recipes.map((recipe,index) => (
                 
                 <motion.div
                   key={recipe.id}
@@ -475,6 +488,7 @@ const RecipeRecommendations: React.FC = () => {
                       </div>
                     </div>
                   </div>
+                  <p>Calories: {recipeCalories[index] || "Loading..."}</p> 
 
                   <div className="p-6 space-y-4">
                     <div className="flex items-center justify-between text-sm text-gray-600">
@@ -502,9 +516,8 @@ const RecipeRecommendations: React.FC = () => {
                         </span>
                       </div>
                     </div>
-
                     <button
-                      onClick={() => handleViewRecipe(recipe.id)}
+                      onClick={() => handleViewRecipe(recipe.id,recipeCalories[index])}
                       className="w-full mt-2 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
                     >
                       View Recipe
@@ -559,7 +572,7 @@ const RecipeRecommendations: React.FC = () => {
                       onClick={() => handleAddCalories(selectedRecipe.calories,selectedRecipe.title)}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                     >
-                      Add to My Calories ({selectedRecipe.calories.toFixed(0)} cal)
+                      Add to My Calories ({selectedRecipe.calories} cal)
                     </button>
                   </div>
                 </div>

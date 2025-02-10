@@ -12,6 +12,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const upload = multer({ dest: 'uploads/' });
 
 router.post('/analyze', upload.single('image'), async (req, res) => {
+    console.log(genAI)
     console.log('Received analyze request');
     try {
         if (!req.file) {
