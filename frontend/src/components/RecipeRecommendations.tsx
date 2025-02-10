@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Clock, Flame, Plus, X, Filter, Users, Loader2, ChefHat, Utensils, AlertCircle, Dumbbell, Wheat, Droplet } from 'lucide-react';
+import { Clock, Flame, Plus, X, Filter, Loader2, ChefHat, Utensils, AlertCircle, Dumbbell, Wheat, Droplet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-const backendurl = import.meta.env.VITE_BACKEND_URL;
+import Swal from 'sweetalert2';
 
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
 interface RecipeFilters {
   numberOfMeals: number;
   dietType: 'vegetarian' | 'non-vegetarian';
+  cuisinePreference?: string;
   maxCalories?: number;
   minCalories?: number;
   maxProtein?: number;
@@ -19,27 +21,18 @@ interface RecipeFilters {
 }
 
 interface Recipe {
-  id: number;
+  id?: string;
   title: string;
-  image: string;
-  usedIngredientCount: number;
-  missedIngredientCount: number;
-  likes: number;
-  readyInMinutes?: number;
-  calories?: number;
-}
-
-interface RecipeDetails {
-  id: number;
-  title: string;
-  instructions: string;
-  calories: number;
-}
-
-interface FoodEntry {
-  name: string;
-  calories: number;
-  id: string;
+  ingredients: string[];
+  instructions: string[];
+  nutrition: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  };
+  cookingTime: number;
+  difficulty: 'easy' | 'medium' | 'hard';
 }
 
 const LIMITS = {
@@ -49,7 +42,17 @@ const LIMITS = {
   fat: { min: 0, max: 100 }
 };
 
-const API_KEY = "88f4e80b21f244a991d779efdd7992cb";
+const CUISINE_OPTIONS = [
+  'Any',
+  'Italian',
+  'Indian',
+  'Chinese',
+  'Mexican',
+  'Mediterranean',
+  'Japanese',
+  'Thai',
+  'American'
+];
 
 const RecipeRecommendations: React.FC = () => {
   const [ingredients, setIngredients] = useState<string[]>([]);
@@ -59,12 +62,12 @@ const RecipeRecommendations: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
-  const [selectedRecipe, setSelectedRecipe] = useState<RecipeDetails | null>(null);
-  const [userCalories, setUserCalories] = useState<number>(0);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
 
   const [filters, setFilters] = useState<RecipeFilters>({
     numberOfMeals: 3,
     dietType: 'non-vegetarian',
+    cuisinePreference: 'Any',
     maxCalories: undefined,
     minCalories: undefined,
     maxProtein: undefined,
@@ -124,7 +127,7 @@ const RecipeRecommendations: React.FC = () => {
     setValidationErrors({});
   };
 
-  const fetchRecipes = async (e: React.FormEvent) => {
+  const generateRecipes = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateFilters()) return;
@@ -137,388 +140,307 @@ const RecipeRecommendations: React.FC = () => {
     setError(null);
 
     try {
-      const ingredientList = ingredients.join(',');
-      const response = await fetch(
-        `https://api.spoonacular.com/recipes/findByIngredients?apiKey=${API_KEY}&ingredients=${ingredientList}&number=${filters.numberOfMeals}&ranking=2&ignorePantry=true`
-      );
+      const response = await axios.post(`${backendUrl}/meal/generate-meal-plan`, {
+        ingredients,
+        dietType: filters.dietType,
+        numberOfMeals: filters.numberOfMeals,
+        cuisinePreference: filters.cuisinePreference !== 'Any' ? filters.cuisinePreference : undefined,
+        nutritionRequirements: {
+          minCalories: filters.minCalories,
+          maxCalories: filters.maxCalories,
+          minProtein: filters.minProtein,
+          maxProtein: filters.maxProtein,
+          minCarbs: filters.minCarbs,
+          maxCarbs: filters.maxCarbs,
+          minFat: filters.minFat,
+          maxFat: filters.maxFat
+        }
+      });
 
-      if (!response.ok) throw new Error('Failed to fetch recipes');
-
-      const data = await response.json();
-      setRecipes(data);
+      if (response.data.success && response.data.recipes) {
+        setRecipes(response.data.recipes);
+      } else {
+        throw new Error('Failed to generate recipes');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch recipes');
+      setError('Failed to generate recipes. Please try again.');
+      console.error('Error generating recipes:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleViewRecipe = async (recipeId: number) => {
+  const handleAddToMealPlan = async (recipe: Recipe) => {
     try {
-      const response = await fetch(
-        `https://api.spoonacular.com/recipes/${recipeId}/information?apiKey=${API_KEY}`
-      );
-      if (!response.ok) throw new Error('Failed to fetch recipe details');
-      const data = await response.json();
-      setSelectedRecipe({
-        id: data.id,
-        title: data.title,
-        instructions: data.instructions || 'No instructions available.',
-        calories: data.nutrition?.nutrients.find((n: any) => n.name === 'Calories')?.amount || 0
+      const userId = localStorage.getItem('userid');
+      if (!userId) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Not Logged In',
+          text: 'Please log in to add meals to your plan'
+        });
+        return;
+      }
+
+      const response = await axios.post(`${backendUrl}/meal/add-food`, {
+        userid: userId,
+        foodName: recipe.title,
+        calories: recipe.nutrition.calories,
+        mealTime: new Date().toISOString()
       });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch recipe details');
+
+      if (response.data.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Recipe Added!',
+          text: `Added ${recipe.title} to your meal plan`,
+          showConfirmButton: false,
+          timer: 2000
+        });
+      }
+    } catch (error) {
+      console.error("Error adding recipe to meal plan:", error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Oops...',
+        text: 'Failed to add recipe to meal plan'
+      });
     }
   };
 
-  const  handleAddCalories = async (calories: number,foodName:string) => {
-    if (foodName && calories) {
-      const caloriesNum = calories;
-      const newEntry: FoodEntry = {
-          name: foodName,
-          calories: caloriesNum,
-          id: Date.now().toString()
-      };
-
-      try {
-          const userid = localStorage.getItem('userid') || '';
-          const response = await axios.post(`${backendurl}/meal/add-food`, {
-              userid,
-              foodName,
-              calories: caloriesNum,
-              mealTime: new Date().toISOString() // You can make this dynamic
-          });
-
-          if (response.data.dailyMealPlan.totalCalories) {
-            console.log(response.data.dailyMealPlan.totalCalories);
-              // setTodayCalories(response.data.dailyMealPlan.totalCalories);
-              // setFoodEntries([...foodEntries, ...response.data.dailyMealPlan.meals]);
-          }
-
-          // setFoodName('');
-          // setCalories('');
-      } catch (error) {
-          console.error("Error adding food:", error);
-      }
-  }
-    // setUserCalories(prev => prev + calories);
-    setSelectedRecipe(null);
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'text-green-500';
+      case 'medium': return 'text-yellow-500';
+      case 'hard': return 'text-red-500';
+      default: return 'text-gray-500';
+    }
   };
 
-  const renderNutritionFilter = (
-    label: string,
-    minKey: keyof RecipeFilters,
-    maxKey: keyof RecipeFilters,
-    limits: { min: number; max: number },
-    icon: React.ReactNode
-  ) => (
-    <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-      <div className="flex items-center space-x-2 text-gray-700 font-medium">
-        {icon}
-        <span>{label}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm text-gray-600 mb-1">Minimum</label>
-          <input
-            type="number"
-            value={filters[minKey] || ''}
-            onChange={(e) => handleFilterChange(minKey, e.target.value)}
-            className={`w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm ${validationErrors[minKey] ? 'border-red-300' : ''
-              }`}
-            placeholder={`Min: ${limits.min}`}
-          />
-          {validationErrors[minKey] && (
-            <p className="mt-1 text-xs text-red-500">{validationErrors[minKey]}</p>
-          )}
-        </div>
-        <div>
-          <label className="block text-sm text-gray-600 mb-1">Maximum</label>
-          <input
-            type="number"
-            value={filters[maxKey] || ''}
-            onChange={(e) => handleFilterChange(maxKey, e.target.value)}
-            className={`w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm ${validationErrors[maxKey] ? 'border-red-300' : ''
-              }`}
-            placeholder={`Max: ${limits.max}`}
-          />
-          {validationErrors[maxKey] && (
-            <p className="mt-1 text-xs text-red-500">{validationErrors[maxKey]}</p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center space-x-3">
-              <ChefHat className="h-8 w-8 text-green-600" />
-              <h1 className="text-3xl font-bold text-gray-900">Recipe Finder</h1>
+    <div className="min-h-screen bg-gray-100 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-2xl font-bold mb-6">Recipe Generator</h2>
+
+          <form onSubmit={handleAddIngredient} className="mb-6">
+            <div className="flex gap-4">
+              <input
+                type="text"
+                value={currentIngredient}
+                onChange={(e) => setCurrentIngredient(e.target.value)}
+                placeholder="Enter an ingredient"
+                className="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              />
+              <button
+                type="submit"
+                className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
             </div>
-            <div className="text-sm text-gray-500 flex items-center">
-              <Utensils className="h-4 w-4 mr-2" />
-              {ingredients.length} ingredients selected
-            </div>
-          </div>
+          </form>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">Your Ingredients</h2>
-                <span className="text-sm text-gray-500">{ingredients.length}/10 max</span>
-              </div>
-
-              <form onSubmit={handleAddIngredient} className="flex gap-2">
-                <input
-                  type="text"
-                  value={currentIngredient}
-                  onChange={(e) => setCurrentIngredient(e.target.value)}
-                  placeholder="Add an ingredient (e.g., chicken, tomatoes)"
-                  className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                  maxLength={30}
-                />
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  className="p-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                  disabled={ingredients.length >= 10}
-                >
-                  <Plus className="h-5 w-5" />
-                </motion.button>
-              </form>
-
-              <div className="flex flex-wrap gap-2">
-                <AnimatePresence>
-                  {ingredients.map((ingredient) => (
-                    <motion.span
-                      key={ingredient}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="inline-flex items-center bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-sm font-medium"
-                    >
-                      {ingredient}
-                      <button
-                        onClick={() => handleRemoveIngredient(ingredient)}
-                        className="ml-2 text-green-600 hover:text-green-800"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </motion.span>
-                  ))}
-                </AnimatePresence>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">Recipe Preferences</h2>
+          <div className="flex flex-wrap gap-2 mb-6">
+            {ingredients.map((ingredient) => (
+              <div
+                key={ingredient}
+                className="bg-gray-100 px-3 py-1 rounded-full flex items-center gap-2"
+              >
+                <span>{ingredient}</span>
                 <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="text-green-600 hover:text-green-700 flex items-center text-sm font-medium"
+                  onClick={() => handleRemoveIngredient(ingredient)}
+                  className="text-gray-500 hover:text-gray-700"
                 >
-                  <Filter className="h-4 w-4 mr-1" />
-                  {showFilters ? 'Hide Filters' : 'Show Filters'}
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-
-              <form onSubmit={fetchRecipes} className="space-y-6">
-                <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-                  <h3 className="font-medium text-gray-700">Basic Settings</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Number of Recipes
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={filters.numberOfMeals}
-                        onChange={(e) => handleFilterChange('numberOfMeals', parseInt(e.target.value))}
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Diet Type
-                      </label>
-                      <select
-                        value={filters.dietType}
-                        onChange={(e) => handleFilterChange('dietType', e.target.value)}
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                      >
-                        <option value="non-vegetarian">Non-Vegetarian</option>
-                        <option value="vegetarian">Vegetarian</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <AnimatePresence>
-                  {showFilters && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-4"
-                    >
-                      <h3 className="font-medium text-gray-700">Nutritional Requirements</h3>
-                      <div className="space-y-4">
-                        {renderNutritionFilter(
-                          'Calories',
-                          'minCalories',
-                          'maxCalories',
-                          LIMITS.calories,
-                          <Flame className="h-5 w-5 text-orange-500" />
-                        )}
-                        {renderNutritionFilter(
-                          'Protein',
-                          'minProtein',
-                          'maxProtein',
-                          LIMITS.protein,
-                          <Dumbbell className="h-5 w-5 text-blue-500" />
-                        )}
-                        {renderNutritionFilter(
-                          'Carbohydrates',
-                          'minCarbs',
-                          'maxCarbs',
-                          LIMITS.carbs,
-                          <Wheat className="h-5 w-5 text-amber-500" />
-                        )}
-                        {renderNutritionFilter(
-                          'Fat',
-                          'minFat',
-                          'maxFat',
-                          LIMITS.fat,
-                          <Droplet className="h-5 w-5 text-yellow-500" />
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  disabled={isLoading || ingredients.length === 0}
-                  className={`w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors ${(isLoading || ingredients.length === 0) ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                >
-                  {isLoading ? (
-                    <span className="flex items-center justify-center">
-                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                      Finding Recipes...
-                    </span>
-                  ) : (
-                    'Find Recipes'
-                  )}
-                </motion.button>
-              </form>
-            </div>
+            ))}
           </div>
 
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-lg flex items-center"
+          <div className="mb-6">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
             >
-              <AlertCircle className="h-5 w-5 mr-2" />
+              <Filter className="w-5 h-5" />
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </button>
+
+            <AnimatePresence>
+              {showFilters && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                >
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Number of Meals</label>
+                    <input
+                      type="number"
+                      value={filters.numberOfMeals}
+                      onChange={(e) => handleFilterChange('numberOfMeals', e.target.value)}
+                      min="1"
+                      max="7"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Diet Type</label>
+                    <select
+                      value={filters.dietType}
+                      onChange={(e) => handleFilterChange('dietType', e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                    >
+                      <option value="non-vegetarian">Non-Vegetarian</option>
+                      <option value="vegetarian">Vegetarian</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Cuisine Preference</label>
+                    <select
+                      value={filters.cuisinePreference}
+                      onChange={(e) => handleFilterChange('cuisinePreference', e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                    >
+                      {CUISINE_OPTIONS.map(cuisine => (
+                        <option key={cuisine} value={cuisine}>{cuisine}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {Object.entries(LIMITS).map(([nutrient, limits]) => (
+                    <div key={nutrient} className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700 capitalize">{nutrient}</label>
+                      <div className="flex gap-2">
+                        <div>
+                          <input
+                            type="number"
+                            placeholder={`Min ${limits.min}`}
+                            value={filters[`min${nutrient.charAt(0).toUpperCase() + nutrient.slice(1)}` as keyof RecipeFilters] || ''}
+                            onChange={(e) => handleFilterChange(`min${nutrient.charAt(0).toUpperCase() + nutrient.slice(1)}` as keyof RecipeFilters, e.target.value)}
+                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                          />
+                          {validationErrors[`min${nutrient.charAt(0).toUpperCase() + nutrient.slice(1)}`] && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {validationErrors[`min${nutrient.charAt(0).toUpperCase() + nutrient.slice(1)}`]}
+                            </p>
+                          )}
+                        </div>
+                        <div>
+                          <input
+                            type="number"
+                            placeholder={`Max ${limits.max}`}
+                            value={filters[`max${nutrient.charAt(0).toUpperCase() + nutrient.slice(1)}` as keyof RecipeFilters] || ''}
+                            onChange={(e) => handleFilterChange(`max${nutrient.charAt(0).toUpperCase() + nutrient.slice(1)}` as keyof RecipeFilters, e.target.value)}
+                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                          />
+                          {validationErrors[`max${nutrient.charAt(0).toUpperCase() + nutrient.slice(1)}`] && (
+                            <p className="text-red-500 text-xs mt-1">
+                              {validationErrors[`max${nutrient.charAt(0).toUpperCase() + nutrient.slice(1)}`]}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <button
+            onClick={generateRecipes}
+            disabled={isLoading}
+            className="w-full bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Generating Recipes...
+              </>
+            ) : (
+              <>
+                <ChefHat className="w-5 h-5" />
+                Generate Recipes
+              </>
+            )}
+          </button>
+
+          {error && (
+            <div className="mt-4 p-4 bg-red-100 text-red-700 rounded-md flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" />
               {error}
-            </motion.div>
+            </div>
           )}
         </div>
 
         {recipes.length > 0 && (
-          console.log(recipes),
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">Found Recipes</h2>
-              <div className="bg-green-100 px-4 py-2 rounded-lg">
-                <span className="text-green-800 font-medium">Total Calories: {userCalories.toFixed(0)}</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recipes.map((recipe) => (
-                
-                <motion.div
-                  key={recipe.id}
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300"
-                >
-                  <div className="relative h-48">
-                    <img
-                      src={recipe.image}
-                      alt={recipe.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    <div className="absolute bottom-4 left-4 right-4">
-                      <h3 className="text-xl font-semibold text-white">{recipe.title}</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {recipes.map((recipe, index) => (
+              <motion.div
+                key={recipe.id || index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-lg shadow-md overflow-hidden"
+              >
+                <div className="p-6">
+                  <h3 className="text-xl font-semibold mb-4">{recipe.title}</h3>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4 text-gray-500" />
+                      <span>{recipe.cookingTime} mins</span>
                     </div>
-                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-lg">
-                      <div className="flex items-center space-x-1">
-                        <Users className="w-4 h-4 text-green-600" />
-                        <span className="text-sm font-medium text-gray-900">{recipe.likes}</span>
-                      </div>
+                    <div className="flex items-center gap-1">
+                      <Utensils className="w-4 h-4 text-gray-500" />
+                      <span className={`capitalize ${getDifficultyColor(recipe.difficulty)}`}>
+                        {recipe.difficulty}
+                      </span>
                     </div>
                   </div>
-
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-center justify-between text-sm text-gray-600">
-                      <div className="flex items-center space-x-4">
-                        {recipe.readyInMinutes && (
-                          <span className="flex items-center">
-                            <Clock className="h-4 w-4 mr-1 text-blue-500" />
-                            <span className="font-medium">{recipe.readyInMinutes} min</span>
-                          </span>
-                        )}
-                        {recipe.calories && (
-                          <span className="flex items-center">
-                            <Flame className="h-4 w-4 mr-1 text-orange-500" />
-                            <span className="font-medium">{recipe.calories} cal</span>
-                          </span>
-                        )}
-                      </div>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="flex items-center gap-2">
+                      <Flame className="w-4 h-4 text-orange-500" />
+                      <span>{recipe.nutrition.calories} kcal</span>
                     </div>
-
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                      <div className="flex items-center">
-                        <div className="h-2 w-2 rounded-full bg-green-500 mr-2" />
-                        <span className="text-sm text-gray-600">
-                          {recipe.usedIngredientCount} ingredients available
-                        </span>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <Dumbbell className="w-4 h-4 text-blue-500" />
+                      <span>{recipe.nutrition.protein}g protein</span>
                     </div>
-
+                    <div className="flex items-center gap-2">
+                      <Wheat className="w-4 h-4 text-yellow-500" />
+                      <span>{recipe.nutrition.carbs}g carbs</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Droplet className="w-4 h-4 text-green-500" />
+                      <span>{recipe.nutrition.fat}g fat</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between">
                     <button
-                      onClick={() => handleViewRecipe(recipe.id)}
-                      className="w-full mt-2 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+                      onClick={() => setSelectedRecipe(recipe)}
+                      className="text-green-500 hover:text-green-600 font-medium"
                     >
-                      View Recipe
+                      View Details
+                    </button>
+                    <button
+                      onClick={() => handleAddToMealPlan(recipe)}
+                      className="text-blue-500 hover:text-blue-600 font-medium"
+                    >
+                      Add to Meal Plan
                     </button>
                   </div>
-                </motion.div>
-              ))}
-            </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         )}
 
         <AnimatePresence>
           {selectedRecipe && (
-            console.log(selectedRecipe),
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -530,36 +452,44 @@ const RecipeRecommendations: React.FC = () => {
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0.95 }}
-                className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
-                onClick={e => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
               >
-                <div className="p-6 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-2xl font-bold text-gray-900">{selectedRecipe.title}</h3>
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <h2 className="text-2xl font-semibold">{selectedRecipe.title}</h2>
                     <button
                       onClick={() => setSelectedRecipe(null)}
                       className="text-gray-500 hover:text-gray-700"
                     >
-                      <X className="h-6 w-6" />
+                      <X className="w-6 h-6" />
                     </button>
-                  </div>
-                  
-                  <div className="prose prose-green max-w-none">
-                    <div dangerouslySetInnerHTML={{ __html: selectedRecipe.instructions }} />
                   </div>
 
-                  <div className="flex justify-end space-x-4 pt-4 border-t">
+                  <div className="mb-6">
+                    <h3 className="font-semibold mb-2">Ingredients:</h3>
+                    <ul className="list-disc list-inside space-y-1">
+                      {selectedRecipe.ingredients.map((ingredient, index) => (
+                        <li key={index} className="text-gray-700">{ingredient}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="mb-6">
+                    <h3 className="font-semibold mb-2">Instructions:</h3>
+                    <ol className="list-decimal list-inside space-y-2">
+                      {selectedRecipe.instructions.map((instruction, index) => (
+                        <li key={index} className="text-gray-700">{instruction}</li>
+                      ))}
+                    </ol>
+                  </div>
+
+                  <div className="mt-6 flex justify-end">
                     <button
-                      onClick={() => setSelectedRecipe(null)}
-                      className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                      onClick={() => handleAddToMealPlan(selectedRecipe)}
+                      className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
                     >
-                      Close
-                    </button>
-                    <button
-                      onClick={() => handleAddCalories(selectedRecipe.calories,selectedRecipe.title)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      Add to My Calories ({selectedRecipe.calories.toFixed(0)} cal)
+                      Add to Meal Plan
                     </button>
                   </div>
                 </div>
