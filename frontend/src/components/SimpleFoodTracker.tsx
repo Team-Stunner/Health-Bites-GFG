@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useDiet } from '../Context/Calary';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 interface FoodEntry {
     name: string;
@@ -19,6 +20,7 @@ export const SimpleFoodTracker: React.FC = () => {
     useEffect(() => {
         console.log("todayCalories updated:", todayCalories);
     }, [todayCalories]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (foodName && calories) {
@@ -35,24 +37,51 @@ export const SimpleFoodTracker: React.FC = () => {
                     userid,
                     foodName,
                     calories: caloriesNum,
-                    mealTime: new Date().toISOString() // You can make this dynamic
+                    mealTime: new Date().toISOString()
                 });
+
                 if (response.data.dailyMealPlan.totalCalories) {
                     setTodayCalories(response.data.dailyMealPlan.totalCalories);
                     setFoodEntries([...foodEntries, ...response.data.dailyMealPlan.meals]);
-                    console.log(response.data.dailyMealPlan.meals)
 
+                    // Show success message
+                    await Swal.fire({
+                        title: 'Food Added!',
+                        text: `Added ${foodName} (${caloriesNum} calories) to your food diary`,
+                        icon: 'success',
+                        confirmButtonText: 'Great!',
+                        confirmButtonColor: '#16a34a',
+                        showClass: {
+                            popup: 'animate__animated animate__fadeInDown'
+                        },
+                        hideClass: {
+                            popup: 'animate__animated animate__fadeOutUp'
+                        }
+                    });
+
+                    setFoodName('');
+                    setCalories('');
                 }
-
-
-                setFoodName('');
-                setCalories('');
             } catch (error) {
                 console.error("Error adding food:", error);
+                // Show error message
+                await Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to add food entry. Please try again.',
+                    icon: 'error',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#ef4444',
+                    showClass: {
+                        popup: 'animate__animated animate__fadeInDown'
+                    },
+                    hideClass: {
+                        popup: 'animate__animated animate__fadeOutUp'
+                    }
+                });
             }
         }
     };
-    console.log(foodEntries)
+
     return (
         <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-2xl font-bold mb-6">Track Your Food</h2>
@@ -107,14 +136,14 @@ export const SimpleFoodTracker: React.FC = () => {
             </div>
 
             {foodEntries !== undefined && foodEntries
-                .slice() // Create a copy to avoid mutating state
-                .sort((a: any, b: any) => new Date(b.mealTime).getTime() - new Date(a.mealTime).getTime()) // Sort descending
+                .slice()
+                .sort((a: any, b: any) => new Date(b.mealTime).getTime() - new Date(a.mealTime).getTime())
                 .map((entry: any) => (
                     <motion.div
                         key={entry.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-gray-50 p-3 rounded-lg flex justify-between items-center"
+                        className="bg-gray-50 p-3 rounded-lg flex justify-between items-center mb-2"
                     >
                         <span className="font-medium">{entry.foodName}</span>
                         <span className="text-gray-600">{entry.calorieCount} cal</span>
@@ -128,7 +157,6 @@ export const SimpleFoodTracker: React.FC = () => {
                     </motion.div>
                 ))
             }
-
         </div>
     );
 };
