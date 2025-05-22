@@ -155,7 +155,7 @@ Return ONLY a JSON array of recipes with this structure:
   "difficulty": "easy" or "medium" or "hard"
 }`;
 
-            const model = global.genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+            const model = global.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
             const result = await model.generateContent(prompt);
             const response = await result.response;
             const text = response.text().replace(/```json\n?|\n?```/g, '').trim();
